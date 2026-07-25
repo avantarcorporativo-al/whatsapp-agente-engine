@@ -1,0 +1,128 @@
+[
+  {
+    "id": "A55DAFCDD92F730B185E0FB08E512449",
+    "user": "Cliente (97724062035974)",
+    "msg": "Hola",
+    "time": "03:48 a.m.",
+    "type": "incoming"
+  },
+  {
+    "id": "ia-1784973042485",
+    "user": "🤖 IA Mesero Virtual",
+    "msg": "¡Hola! ¡Bienvenido a El Sazón! ¿En qué puedo ayudarte hoy?",
+    "time": "03:50 a.m.",
+    "type": "outgoing"
+  },
+  {
+    "id": "3EB0E590598CB64922318D",
+    "user": "📱 Tu Celular (5575165733)",
+    "msg": "¡Hola! ¡Bienvenido a El Sazón! ¿En qué puedo ayudarte hoy?",
+    "time": "03:50 a.m.",
+    "type": "outgoing"
+  },
+  {
+    "id": "A5EA751535810FE60057EF6E2B0EDC29",
+    "user": "Cliente (97724062035974)",
+    "msg": "Hola",
+    "time": "02:17 p.m.",
+    "type": "incoming"
+  },
+  {
+    "id": "ia-1785010793056",
+    "user": "🤖 IA Mesero Virtual",
+    "msg": "¡Hola! ¡Bienvenido a El Sazón! ¿En qué te puedo ayudar hoy?",
+    "time": "02:19 p.m.",
+    "type": "outgoing"
+  },
+  {
+    "id": "3EB061A3FB14D349FE5558",
+    "user": "📱 Tu Celular (5575165733)",
+    "msg": "¡Hola! ¡Bienvenido a El Sazón! ¿En qué te puedo ayudar hoy?",
+    "time": "02:19 p.m.",
+    "type": "outgoing"
+  },
+  {
+    "id": "A504EC448DA846F97429AF57CE078593",
+    "user": "Cliente (97724062035974)",
+    "msg": "Me dicen que sabes de noticias tambien",
+    "time": "02:18 p.m.",
+    "type": "incoming"
+  },
+  {
+    "id": "ia-1785010805064",
+    "user": "🤖 IA Mesero Virtual",
+    "msg": "¡Hola! En El Sazón nos especializamos en comida deliciosa. ¿Te gustaría conocer nuestros platillos y precios?",
+    "time": "02:20 p.m.",
+    "type": "outgoing"
+  },
+  {
+    "id": "3EB06006B3922D9F8FC3A0",
+    "user": "📱 Tu Celular (5575165733)",
+    "msg": "¡Hola! En El Sazón nos especializamos en comida deliciosa. ¿Te gustaría conocer nuestros platillos y precios?",
+    "time": "02:20 p.m.",
+    "type": "outgoing"
+  },
+  {
+    "id": "A5D0E70302D6FDB7FD276E095DE6D0F8",
+    "user": "Cliente (97724062035974)",
+    "msg": "Hola",
+    "time": "02:22 p.m.",
+    "type": "incoming"
+  },
+  {
+    "id": "ia-1785011040040",
+    "user": "🤖 IA Mesero Virtual",
+    "msg": "¡Hola de nuevo! ¡Qué gusto verte! ¿Listo para explorar el menú?",
+    "time": "02:24 p.m.",
+    "type": "outgoing"
+  },
+  {
+    "id": "3EB089216B193B458992B4",
+    "user": "📱 Tu Celular (5575165733)",
+    "msg": "¡Hola de nuevo! ¡Qué gusto verte! ¿Listo para explorar el menú?",
+    "time": "02:24 p.m.",
+    "type": "outgoing"
+  },
+  {
+    "id": "A57911C37EE031B35782105A59F41372",
+    "user": "Cliente (97724062035974)",
+    "msg": "Cual menú?",
+    "time": "02:22 p.m.",
+    "type": "incoming"
+  },
+  {
+    "id": "ia-1785011048351",
+    "user": "🤖 IA Mesero Virtual",
+    "msg": "¡Hola! Te comparto nuestro menú en vivo:\n• Corte Rib Eye Prime 400g - $380\n• Hamburguesa Gourmet Trufada - $195\n• Tacos de Camarón al Pastor - $165\n• Limonada de Frutos Rojos - $65\n• Cheesecake de Fruto de la Pasión - $95\n\n¿Qué te gustaría ordenar hoy? 😊",
+    "time": "02:24 p.m.",
+    "type": "outgoing"
+  },
+  {
+    "id": "3EB0C6068B56945372A135",
+    "user": "📱 Tu Celular (5575165733)",
+    "msg": "¡Hola! Te comparto nuestro menú en vivo:\n• Corte Rib Eye Prime 400g - $380\n• Hamburguesa Gourmet Trufada - $195\n• Tacos de Camarón al Pastor - $165\n• Limonada de Frutos Rojos - $65\n• Cheesecake de Fruto de la Pasión - $95\n\n¿Qué te gustaría ordenar hoy? 😊",
+    "time": "02:24 p.m.",
+    "type": "outgoing"
+  },
+  {
+    "id": "A5AB4291DC2C93D62C89EFEE104EECA3",
+    "user": "Cliente (97724062035974)",
+    "msg": "Hola",
+    "time": "02:23 p.m.",
+    "type": "incoming"
+  },
+  {
+    "id": "ia-1785011148360",
+    "user": "🤖 IA Mesero Virtual",
+    "msg": "El menú de El Sazón está en pantalla. ¿Qué deseas ordenar?",
+    "time": "02:25 p.m.",
+    "type": "outgoing"
+  },
+  {
+    "id": "3EB0A08A813B71786EAB91",
+    "user": "📱 Tu Celular (5575165733)",
+    "msg": "El menú de El Sazón está en pantalla. ¿Qué deseas ordenar?",
+    "time": "02:25 p.m.",
+    "type": "outgoing"
+  }
+]

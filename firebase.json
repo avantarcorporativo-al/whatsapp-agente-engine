@@ -1,0 +1,19 @@
+{
+  "hosting": [
+    {
+      "site": "app-web-cambiar-imagenes-texto",
+      "public": "public",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**"
+      ],
+      "rewrites": [
+        {
+          "source": "**",
+          "destination": "/index.html"
+        }
+      ]
+    }
+  ]
+}

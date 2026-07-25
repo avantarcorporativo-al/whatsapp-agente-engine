@@ -1,0 +1,115 @@
+:root {
+    --bg-color: #121212;
+    --card-bg: rgba(26, 26, 26, 0.92);
+    --card-border: rgba(255, 255, 255, 0.15);
+    --card-text: #FFFFFF;
+    --card-subtext: #9CA3AF;
+    --btn-bg: #D4AF37;
+    --btn-text: #000000;
+}
+
+body {
+    background-color: var(--bg-color) !important;
+}
+
+/* Custom Scrollbar */
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+.no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+/* Glassmorphism Cards & Dynamic Card Color */
+.glass-card {
+    background-color: var(--card-bg) !important;
+    border-color: var(--card-border) !important;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+}
+
+.text-card-title {
+    color: var(--card-text) !important;
+}
+
+.text-card-sub {
+    color: var(--card-subtext) !important;
+}
+
+/* Modal Active Tab Highlighting */
+.btn-tab-modal {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: #D1D5DB;
+    transition: all 0.2s ease;
+}
+
+.btn-tab-modal.active-tab {
+    background-color: var(--btn-bg) !important;
+    color: var(--btn-text) !important;
+    font-weight: 700 !important;
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in {
+    animation: fadeIn 0.3s ease-out forwards;
+}
+
+/* Dynamic Accent & Button Colors */
+.btn-accent {
+    background-color: var(--btn-bg) !important;
+    color: var(--btn-text) !important;
+}
+
+.text-accent {
+    color: var(--btn-bg) !important;
+}
+
+.border-accent:focus {
+    border-color: var(--btn-bg) !important;
+}
+
+.bg-accent-light {
+    background-color: rgba(212, 175, 55, 0.2) !important;
+}
+
+/* Background Helpers */
+body.gourmet-dark {
+    background-color: #121212 !important;
+}
+
+body.rustico-warm {
+    background-color: #241610 !important;
+}
+
+body.red-bistro {
+    background-color: #1a0808 !important;
+}
+
+/* Direct Inline Editing Highlights */
+.modo-edicion-activo [contenteditable="true"] {
+    outline: 2px dashed #D4AF37 !important;
+    outline-offset: 2px;
+    padding: 2px 4px;
+    border-radius: 6px;
+    cursor: text;
+    background-color: rgba(212, 175, 55, 0.15) !important;
+    transition: all 0.2s ease;
+}
+
+.modo-edicion-activo [contenteditable="true"]:hover,
+.modo-edicion-activo [contenteditable="true"]:focus {
+    outline: 2px solid #F59E0B !important;
+    background-color: rgba(245, 158, 11, 0.25) !important;
+}
+
+/* Site Lock Screen Overlay */
+#pantalla-bloqueo-sitio {
+    backdrop-filter: blur(25px);
+    -webkit-backdrop-filter: blur(25px);
+}

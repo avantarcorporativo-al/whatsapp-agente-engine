@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp Página Universal - Dashboard Independiente</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts & Material Symbols -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
+    
+    <!-- Socket.io Client SDK -->
+    <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+</head>
+<body class="bg-[#f0f2f5] text-[#333] font-['Outfit'] min-h-screen flex flex-col antialiased">
+
+    <!-- HEADER PRINCIPAL -->
+    <header class="bg-[#00a884] p-4 text-white shadow-md sticky top-0 z-50">
+        <div class="max-w-[1700px] mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-white rounded-full flex items-center justify-center text-[#00a884] shadow-md">
+                    <span class="material-symbols-outlined text-2xl font-bold">smart_toy</span>
+                </div>
+                <div>
+                    <h1 class="text-xl font-black leading-none tracking-tight">WhatsApp Página Universal</h1>
+                    <p class="text-[10px] opacity-90 uppercase tracking-widest font-extrabold mt-1">Sistema Independiente AI Engine V2.0</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-3 bg-black/20 px-4 py-2 rounded-full text-xs font-bold border border-white/20">
+                <div id="status-indicator-dot" class="w-3 h-3 rounded-full bg-red-500 animate-ping"></div>
+                <span id="lbl-status-whatsapp" class="text-white font-extrabold">WhatsApp Desconectado</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- DASHBOARD PRINCIPAL DE 3 COLUMNAS -->
+    <main class="p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 max-w-[1700px] mx-auto w-full flex-1">
+        
+        <!-- COLUMNA 1: CONFIGURACIÓN DEL AGENTE, CLAVE API Y PERSONALIDAD -->
+        <div class="lg:col-span-4 space-y-6">
+            <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-200/80 space-y-4">
+                <div class="flex items-center justify-between border-b pb-3">
+                    <h2 class="text-xs font-black uppercase tracking-wider text-gray-600 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-[#00a884]">settings</span> Personalidad & Clave API
+                    </h2>
+                    <span class="text-[10px] bg-emerald-500/10 text-emerald-700 px-2 py-0.5 rounded-full font-bold">Gemini 2.5 Flash</span>
+                </div>
+
+                <!-- CAMPO EXCLUSIVO PARA EDITAR LA CLAVE API KEY DE GEMINI -->
+                <div class="space-y-1.5">
+                    <label class="block text-xs font-bold text-gray-700">🔑 Clave API Key de Gemini (Editable):</label>
+                    <div class="flex gap-2">
+                        <input type="password" id="txt-gemini-api-key" value="AIzaSyC6m1vQDrODxPWX_tsIpHsEBR32garG2V4" class="w-full bg-[#f8f9fa] border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs outline-none focus:border-[#00a884] font-mono tracking-wider">
+                        <button onclick="toggleVisibilityApiKey()" type="button" class="bg-gray-100 hover:bg-gray-200 text-gray-600 px-3 py-2.5 rounded-xl text-xs flex items-center shrink-0 font-bold">
+                            <span id="icon-eye-key" class="material-symbols-outlined text-sm">visibility</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="space-y-1.5">
+                    <label class="block text-xs font-bold text-gray-700">📝 Reglas (Respuestas Cortas Directas):</label>
+                    <textarea id="txt-instrucciones-agente" class="w-full h-36 p-3.5 bg-[#f8f9fa] rounded-xl text-xs border border-gray-200 outline-none focus:border-[#00a884] leading-relaxed font-sans font-medium" placeholder="Escribe las reglas de respuesta del Mesero IA..."></textarea>
+                </div>
+
+                <button onclick="guardarConfiguracionAgente()" class="w-full bg-[#00a884] hover:bg-[#008f70] text-white py-3.5 rounded-xl font-black uppercase tracking-wider text-xs flex items-center justify-center gap-2 active:scale-95 transition-all shadow-md">
+                    <span class="material-symbols-outlined text-base">save</span> Guardar API Key & Reglas
+                </button>
+            </div>
+        </div>
+
+        <!-- COLUMNA 2: CONEXIÓN CÓDIGO QR Y BOTÓN GENERAL DE ENCENDIDO / APAGADO -->
+        <div class="lg:col-span-4 space-y-6">
+            <!-- RECUADRO CÓDIGO QR -->
+            <div class="bg-white rounded-2xl p-8 shadow-sm border border-gray-200/80 text-center flex flex-col items-center">
+                <h2 class="text-xs font-black uppercase tracking-wider text-gray-600 mb-6 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-[#00a884]">qr_code_scanner</span> Conexión de WhatsApp en Vivo
+                </h2>
+
+                <div id="box-qr-container" class="w-64 h-64 border-2 border-dashed border-gray-300 rounded-[2rem] flex flex-col items-center justify-center mb-6 bg-[#f8f9fa] overflow-hidden relative shadow-inner">
+                    <div id="qr-loading-spinner" class="flex flex-col items-center text-gray-400 gap-2 p-4 text-center">
+                        <span class="material-symbols-outlined text-4xl animate-spin text-[#00a884]">sync</span>
+                        <span class="text-xs font-bold uppercase tracking-wider">Cargando Código QR...</span>
+                    </div>
+                    <img id="img-qr-code" src="" alt="Código QR WhatsApp" class="hidden w-full h-full object-contain p-3">
+                    
+                    <div id="box-connected-success" class="hidden flex-col items-center text-[#00a884] gap-2 p-4 animate-bounce">
+                        <span class="material-symbols-outlined text-6xl">check_circle</span>
+                        <span class="font-black text-sm uppercase tracking-wider">WhatsApp Conectado</span>
+                        <span id="lbl-phone-connected" class="text-xs text-gray-600 font-bold">5575165733</span>
+                    </div>
+                </div>
+
+                <div class="w-full grid grid-cols-2 gap-3">
+                    <button onclick="generarCodigoQRServer()" class="bg-[#00a884] hover:bg-[#008f70] text-white py-3.5 rounded-2xl font-black flex items-center justify-center gap-1.5 uppercase tracking-wider text-[11px] active:scale-95 transition-all shadow-md">
+                        <span class="material-symbols-outlined text-base">bolt</span> Generar QR
+                    </button>
+                    <button onclick="solicitarPairingCode8Digitos()" class="bg-slate-800 hover:bg-slate-900 text-white py-3.5 rounded-2xl font-black flex items-center justify-center gap-1.5 uppercase tracking-wider text-[11px] active:scale-95 transition-all shadow-md">
+                        <span class="material-symbols-outlined text-base">key</span> Clave 8 Dígitos
+                    </button>
+                </div>
+            </div>
+
+            <!-- BOTÓN GENERAL DE ENCENDIDO Y APAGADO DE LA IA -->
+            <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-200/80 space-y-3">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h2 class="text-sm font-black text-gray-800 uppercase tracking-tight flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-emerald-600">power_settings_new</span> BOTÓN GENERAL DE LA IA
+                        </h2>
+                        <p id="lbl-puente-estado-sub" class="text-[10px] text-emerald-600 font-extrabold uppercase mt-0.5">🟢 IA Encendida y Respondiendo</p>
+                    </div>
+                    
+                    <button id="btn-toggle-puente" onclick="togglePuenteAgente()" class="w-16 h-9 rounded-full relative transition-all bg-[#00a884] shadow-inner">
+                        <div id="switch-knob" class="absolute top-1 left-8 w-7 h-7 bg-white rounded-full shadow-md transition-all"></div>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- COLUMNA 3: MONITOR DE ACTIVIDAD EN TIEMPO REAL -->
+        <div class="lg:col-span-4">
+            <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-200/80 h-full flex flex-col min-h-[500px]">
+                <div class="flex items-center justify-between border-b pb-3 mb-4">
+                    <h2 class="text-xs font-black uppercase tracking-wider text-gray-600 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-[#00a884]">history</span> Monitor de Actividad en Tiempo Real
+                    </h2>
+                    <button onclick="limpiarMonitorLogs()" title="Limpiar monitor" class="text-[10px] text-gray-400 hover:text-gray-600 font-bold flex items-center gap-0.5">
+                        <span class="material-symbols-outlined text-sm">delete</span> Limpiar
+                    </button>
+                </div>
+
+                <div id="container-monitor-logs" class="flex-1 overflow-y-auto space-y-3 pr-1 max-h-[600px] scrollbar-thin">
+                    <div class="text-center py-8 text-gray-400 space-y-2">
+                        <span class="material-symbols-outlined text-3xl opacity-50">forum</span>
+                        <p class="text-xs font-bold">Esperando mensajes entrantes o salientes de WhatsApp...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- SCRIPT CLIENTE SOCKET.IO Y LÓGICA DE TIEMPO REAL -->
+    <script>
+        const socket = io();
+        let puenteActivo = true;
+
+        const defaultInstructions = `Responde SIEMPRE de forma MUY CORTA, BREVE Y DIRECTA (máximo 2 a 3 renglones por respuesta). Atiende a los clientes por WhatsApp con entusiasmo, dándoles los precios exactos del menú de El Sazón.
+
+MENÚ EN VIVO:
+1. Corte Rib Eye Prime 400g - $380
+2. Hamburguesa Gourmet Trufada - $195
+3. Tacos de Camarón al Pastor - $165
+4. Limonada de Frutos Rojos - $65
+5. Cheesecake de Fruto de la Pasión - $95`;
+
+        document.getElementById('txt-instrucciones-agente').value = defaultInstructions;
+
+        function toggleVisibilityApiKey() {
+            const input = document.getElementById('txt-gemini-api-key');
+            const icon = document.getElementById('icon-eye-key');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.textContent = 'visibility_off';
+            } else {
+                input.type = 'password';
+                icon.textContent = 'visibility';
+            }
+        }
+
+        socket.on('whatsapp_qr', (qrBase64) => {
+            const spinner = document.getElementById('qr-loading-spinner');
+            const imgQr = document.getElementById('img-qr-code');
+            const boxSuccess = document.getElementById('box-connected-success');
+            
+            if (spinner) spinner.classList.add('hidden');
+            if (boxSuccess) boxSuccess.classList.add('hidden');
+            if (imgQr) {
+                imgQr.src = qrBase64;
+                imgQr.classList.remove('hidden');
+            }
+
+            const dot = document.getElementById('status-indicator-dot');
+            const lbl = document.getElementById('lbl-status-whatsapp');
+            if (dot) dot.className = "w-3 h-3 rounded-full bg-amber-400 animate-pulse";
+            if (lbl) lbl.textContent = "Esperando Escáner QR...";
+        });
+
+        socket.on('whatsapp_status', (estado) => {
+            const dot = document.getElementById('status-indicator-dot');
+            const lbl = document.getElementById('lbl-status-whatsapp');
+            const spinner = document.getElementById('qr-loading-spinner');
+            const imgQr = document.getElementById('img-qr-code');
+            const boxSuccess = document.getElementById('box-connected-success');
+
+            if (estado === 'connected') {
+                if (dot) dot.className = "w-3 h-3 rounded-full bg-emerald-400 animate-pulse";
+                if (lbl) lbl.textContent = "WhatsApp Conectado";
+                if (imgQr) imgQr.classList.add('hidden');
+                if (spinner) spinner.classList.add('hidden');
+                if (boxSuccess) boxSuccess.classList.remove('hidden');
+            } else if (estado === 'disconnected') {
+                if (dot) dot.className = "w-3 h-3 rounded-full bg-red-500 animate-ping";
+                if (lbl) lbl.textContent = "WhatsApp Desconectado";
+                if (boxSuccess) boxSuccess.classList.add('hidden');
+                if (imgQr) imgQr.classList.add('hidden');
+                if (spinner) spinner.ariaBusy = "true";
+            }
+        });
+
+        socket.on('puente_status', (estadoPuente) => {
+            puenteActivo = estadoPuente;
+            actualizarUIBotónPuente();
+        });
+
+        socket.on('activity_log', (log) => {
+            agregarLogAlMonitor(log);
+        });
+
+        function agregarLogAlMonitor(l) {
+            const container = document.getElementById('container-monitor-logs');
+            if (!container) return;
+
+            const placeholder = container.querySelector('.text-center');
+            if (placeholder) placeholder.remove();
+
+            const isOut = l.type === 'outgoing';
+            const hora = l.time || new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            const div = document.createElement('div');
+            div.className = `p-3.5 rounded-xl border text-xs relative overflow-hidden transition-all shadow-sm ${isOut ? 'bg-emerald-50 border-emerald-200 text-emerald-950' : 'bg-blue-50 border-blue-200 text-blue-950'}`;
+            div.innerHTML = `
+                <div class="absolute left-0 top-0 bottom-0 w-1.5 ${isOut ? 'bg-[#00a884]' : 'bg-blue-500'}"></div>
+                <div class="flex justify-between items-center mb-1 text-[10px] font-black uppercase tracking-wider ${isOut ? 'text-emerald-700' : 'text-blue-700'}">
+                    <span>${isOut ? '🤖 IA / SALIENTE' : '📱 CLIENTE / ENTRANTE'}: ${l.user}</span>
+                    <span>${hora}</span>
+                </div>
+                <p class="font-sans text-xs font-medium leading-relaxed">${escapeHtml(l.msg)}</p>
+            `;
+            container.insertBefore(div, container.firstChild);
+        }
+
+        function togglePuenteAgente() {
+            puenteActivo = !puenteActivo;
+            socket.emit('toggle_puente', puenteActivo);
+            actualizarUIBotónPuente();
+
+            fetch('/api/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    puente: puenteActivo, 
+                    instrucciones: document.getElementById('txt-instrucciones-agente').value,
+                    apiKey: document.getElementById('txt-gemini-api-key').value.trim()
+                })
+            });
+        }
+
+        function actualizarUIBotónPuente() {
+            const btn = document.getElementById('btn-toggle-puente');
+            const knob = document.getElementById('switch-knob');
+            const sub = document.getElementById('lbl-puente-estado-sub');
+
+            if (puenteActivo) {
+                btn.className = "w-16 h-9 rounded-full relative transition-all bg-[#00a884] shadow-inner";
+                knob.className = "absolute top-1 left-8 w-7 h-7 bg-white rounded-full shadow-md transition-all";
+                if (sub) {
+                    sub.textContent = "🟢 IA Encendida y Respondiendo";
+                    sub.className = "text-[10px] text-emerald-600 font-extrabold uppercase mt-0.5";
+                }
+            } else {
+                btn.className = "w-16 h-9 rounded-full relative transition-all bg-gray-300 shadow-inner";
+                knob.className = "absolute top-1 left-1 w-7 h-7 bg-white rounded-full shadow-md transition-all";
+                if (sub) {
+                    sub.textContent = "🔴 IA Apagada (Mensajes Pausados)";
+                    sub.className = "text-[10px] text-rose-600 font-extrabold uppercase mt-0.5";
+                }
+            }
+        }
+
+        function generarCodigoQRServer() {
+            fetch('/api/start');
+        }
+
+        function solicitarPairingCode8Digitos() {
+            fetch('/pairing-code?phone=5575165733')
+                .then(r => r.json())
+                .then(data => {
+                    if (data.code) alert("🔑 CÓDIGO DE 8 DÍGITOS DE META:\n\n" + data.code);
+                });
+        }
+
+        function guardarConfiguracionAgente() {
+            const inst = document.getElementById('txt-instrucciones-agente').value;
+            const key = document.getElementById('txt-gemini-api-key').value.trim();
+            fetch('/api/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ instrucciones: inst, puente: puenteActivo, apiKey: key })
+            }).then(() => alert("💾 ¡Clave API Key de Gemini e Instrucciones guardadas con éxito!"));
+        }
+
+        function limpiarMonitorLogs() {
+            const container = document.getElementById('container-monitor-logs');
+            if (container) container.innerHTML = `<div class="text-center py-8 text-gray-400 space-y-2"><span class="material-symbols-outlined text-3xl opacity-50">forum</span><p class="text-xs font-bold">Esperando mensajes entrantes o salientes de WhatsApp...</p></div>`;
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
+    </script>
+</body>
+</html>

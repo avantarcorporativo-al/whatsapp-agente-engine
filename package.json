@@ -1,0 +1,17 @@
+{
+  "name": "whatsapp-pagina-universal",
+  "version": "2.0.0",
+  "description": "Sistema Independiente de Automatización WhatsApp con Inteligencia Artificial Gemini y Socket.io",
+  "main": "server_whatsapp.js",
+  "scripts": {
+    "start": "node server_whatsapp.js"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "^6.7.23",
+    "cors": "^2.8.6",
+    "express": "^4.22.2",
+    "pino": "^9.6.0",
+    "qrcode": "^1.5.4",
+    "socket.io": "^4.7.5"
+  }
+}
