@@ -1,0 +1,5 @@
+node_modules/
+.env
+sesion_whatsapp_auth/
+.firebase/
+firebase-debug.log*
