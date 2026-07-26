@@ -105,6 +105,8 @@ async function iniciarBaileys() {
         io.emit('whatsapp_status', { estado: 'conectando', mensaje: 'Iniciando WhatsApp...' });
         io.emit('sistema_status', { encendido: true, mensaje: "🟢 SISTEMA CONECTADO Y OPERATIVO" });
 
+        const { state, saveCreds } = await useMultiFileAuthState(AUTH_FOLDER);
+
         let version;
         try {
             const vRes = await fetchLatestBaileysVersion();
