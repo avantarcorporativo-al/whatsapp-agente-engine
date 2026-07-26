@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Agente Universal de WhatsApp + Gemini IA</title>
+    <title>Agente Universal de WhatsApp + Gemini IA (CLON)</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Lucide Icons -->
@@ -19,32 +19,24 @@
 </head>
 <body class="text-slate-100 min-h-screen p-4 md:p-6 max-w-7xl mx-auto space-y-6 custom-scrollbar flex flex-col">
 
-    <!-- ================================================================= -->
-    <!-- PANTALLA DE CAMUFLAJE Y SEGURIDAD (MODO SIGILO / STEALTH SCREEN)   -->
-    <!-- ================================================================= -->
+    <!-- PANTALLA DE CAMUFLAJE Y SEGURIDAD (MODO SIGILO / STEALTH SCREEN) -->
     <div id="stealth-screen" class="fixed inset-0 z-[99999] bg-black flex flex-col items-center justify-center transition-opacity duration-500">
-        
-        <!-- ÁREA INVISIBLE DE DISPARO EN LA ESQUINA SUPERIOR IZQUIERDA -->
-        <!-- (Toca aquí de 5 a 10 veces seguidas para activar el PIN) -->
         <div id="secret-corner-trigger" class="fixed top-0 left-0 w-28 h-28 cursor-pointer select-none z-[100000]"></div>
 
-        <!-- VISTA DE CAMUFLAJE CON BOTÓN DISCRETO DE PRUEBA -->
         <div id="stealth-blank-view" class="text-center p-6 space-y-4">
-            <p class="text-slate-700 text-xs font-mono select-none">404 Not Found</p>
-            <!-- BOTÓN DISCRETO DE PRUEBA (PASO A) -->
+            <p class="text-slate-700 text-xs font-mono select-none">404 Not Found (CLON)</p>
             <button onclick="mostrarModalPin()" class="bg-slate-900/60 border border-slate-800/80 hover:bg-slate-800 text-slate-400 font-medium text-xs px-4 py-2 rounded-xl transition shadow-lg flex items-center gap-2 mx-auto">
-                🔒 Desbloquear Agente (Prueba PIN)
+                🔒 Desbloquear Agente CLON (PIN)
             </button>
         </div>
 
-        <!-- MODAL DE CONTRASEÑA / PIN (Oculto por defecto) -->
         <div id="pin-modal" class="hidden bg-slate-900 border border-slate-800 rounded-2xl p-6 w-80 shadow-2xl space-y-4 text-center">
             <div class="w-12 h-12 bg-purple-500/10 border border-purple-500/30 rounded-full flex items-center justify-center mx-auto text-purple-400 text-xl">
                 🔒
             </div>
             <div>
-                <h3 class="text-base font-bold text-white">Acceso Privado</h3>
-                <p class="text-xs text-slate-400 mt-1">Ingresa el PIN de seguridad para acceder al panel:</p>
+                <h3 class="text-base font-bold text-white">Acceso Privado CLON</h3>
+                <p class="text-xs text-slate-400 mt-1">Ingresa el PIN de seguridad:</p>
             </div>
             
             <input type="password" id="txt-secret-pin" maxlength="10" placeholder="••••" 
@@ -58,7 +50,7 @@
                     Desbloquear
                 </button>
             </div>
-            <p id="lbl-pin-error" class="text-red-400 text-xs hidden font-medium">⚠️ PIN Incorrecto. Intenta de nuevo.</p>
+            <p id="lbl-pin-error" class="text-red-400 text-xs hidden font-medium">⚠️ PIN Incorrecto.</p>
         </div>
     </div>
 
@@ -69,12 +61,11 @@
                 <i data-lucide="bot" class="w-8 h-8"></i>
             </div>
             <div>
-                <h1 class="text-xl font-bold text-white tracking-wide">Agente Universal Engine</h1>
-                <p class="text-xs text-slate-400">Panel de Control y Monitoreo WhatsApp IA (VERSIÓN CLON)</p>
+                <h1 class="text-xl font-bold text-white tracking-wide">Agente Universal Engine (CLON)</h1>
+                <p class="text-xs text-slate-400">Panel de Control y Monitoreo WhatsApp IA en Puerto 3001</p>
             </div>
         </div>
 
-        <!-- INDICADOR GLOBAL DE ESTADO, BOTÓN DE BLOQUEO Y INTERRUPTOR MAESTRO -->
         <div class="flex items-center space-x-3 bg-slate-950 p-2 px-4 rounded-xl border border-slate-800">
             <div id="badge-estado-sistema" class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                 🟢 SISTEMA ENCENDIDO
@@ -82,7 +73,6 @@
 
             <div class="h-6 w-px bg-slate-800"></div>
 
-            <!-- BOTÓN MANUAL DE BLOQUEO DE PANEL -->
             <button onclick="bloquearPanelManual()" class="px-3 py-2 rounded-lg text-xs font-bold transition-all bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-700/80 flex items-center gap-1.5 shadow-md">
                 <i data-lucide="lock" class="w-3.5 h-3.5 text-purple-400"></i>
                 <span>🔒 Bloquear Panel</span>
@@ -95,41 +85,7 @@
         </div>
     </header>
 
-    <!-- MODAL DE ADVERTENCIA DE INACTIVIDAD (30 MINUTOS) -->
-    <div id="inactivity-warning-modal" class="hidden fixed inset-0 z-[100001] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-slate-900 border border-amber-500/40 rounded-2xl p-6 w-80 shadow-2xl space-y-4 text-center">
-            <div class="w-12 h-12 bg-amber-500/10 border border-amber-500/30 rounded-full flex items-center justify-center mx-auto text-amber-400 text-xl">
-                ⚠️
-            </div>
-            <div>
-                <h3 class="text-base font-bold text-white">¿Sigues trabajando aquí?</h3>
-                <p class="text-xs text-slate-300 mt-1">
-                    No se detectó actividad durante 15 minutos.<br>El panel se bloqueará en <span id="lbl-countdown-sec" class="font-extrabold text-amber-400 text-sm">15</span> segundos.
-                </p>
-            </div>
-            
-            <button onclick="resetearTemporizadorInactividadManual()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold py-2.5 px-4 rounded-xl text-xs shadow-lg transition">
-                🟢 Seguir Conectado
-            </button>
-        </div>
-    </div>
-
-    <!-- ALERTA HTTPS FIREBASE (Si aplica) -->
-    <div id="alerta-https" class="hidden bg-amber-500/10 border border-amber-500/30 px-6 py-3 rounded-xl text-amber-300 text-xs flex flex-wrap items-center justify-between gap-3">
-        <div class="flex items-center space-x-2">
-            <i data-lucide="alert-triangle" class="w-4 h-4 text-amber-400 shrink-0"></i>
-            <span>⚠️ <strong>Modo Firebase Hosting (HTTPS) Detectado:</strong> Ingresa la URL HTTPS de tu servidor Cloud para vincular WhatsApp.</span>
-        </div>
-        <div class="flex items-center space-x-2">
-            <input type="text" id="txt-backend-url" placeholder="https://tu-servidor.render.com" class="bg-slate-900 border border-amber-500/40 text-white text-xs rounded px-2.5 py-1.5 w-64 focus:outline-none">
-            <button onclick="guardarBackendUrl()" class="bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold px-3 py-1.5 rounded text-xs">Guardar URL</button>
-        </div>
-    </div>
-
-
-    <!-- ======================================================= -->
     <!-- 1. HASTA ARRIBA: MONITOR DE CHATS Y CONVERSACIONES (GRANDES) -->
-    <!-- ======================================================= -->
     <section class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-2xl space-y-4">
         <div class="flex justify-between items-center border-b border-slate-800 pb-3">
             <h2 class="text-base font-bold text-slate-200 flex items-center gap-2">
@@ -144,16 +100,12 @@
             </div>
         </div>
 
-        <!-- Pantalla Grande de Mensajes -->
-        <div id="contenedor-mensajes-chat" class="bg-slate-950 border border-slate-800 rounded-lg p-4 h-96 overflow-y-auto space-y-3 font-mono text-xs custom-scrollbar">
+        <div id="contenedor-mensajes-chat" class="bg-slate-950 border border-slate-800 rounded-lg p-4 h-80 overflow-y-auto space-y-3 font-mono text-xs custom-scrollbar">
             <div class="text-slate-500 italic text-center py-10">Esperando mensajes entrantes de WhatsApp...</div>
         </div>
     </section>
 
-
-    <!-- ======================================================= -->
-    <!-- 2. EN MEDIO: VINCULACIÓN WHATSAPP Y BOTONES A UN LADO DEL QR -->
-    <!-- ======================================================= -->
+    <!-- 2. EN MEDIO: VINCULACIÓN WHATSAPP Y CONTROLES -->
     <section class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-2xl space-y-4">
         <h2 class="text-base font-bold text-slate-200 flex items-center gap-2 border-b border-slate-800 pb-3">
             <i data-lucide="qr-code" class="w-5 h-5 text-emerald-400"></i>
@@ -161,8 +113,6 @@
         </h2>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
-            
-            <!-- Recuadro del Código QR -->
             <div class="flex flex-col items-center justify-center p-4 bg-slate-950 border border-slate-800 rounded-xl min-h-[260px]">
                 <div id="qr-container" class="w-56 h-56 flex flex-col items-center justify-center bg-slate-950 border border-slate-800 rounded-xl p-2 shadow-inner overflow-hidden relative">
                     <div id="qr-placeholder" class="text-center space-y-2 text-slate-500 p-2">
@@ -174,143 +124,161 @@
                 <p id="txt-estado-conexion" class="text-xs text-slate-400 mt-3 text-center">Escanea este código desde WhatsApp > Dispositivos Vinculados.</p>
             </div>
 
-            <!-- Botones de Control General A UN LADO del Código QR -->
             <div class="space-y-4 bg-slate-950 p-5 rounded-xl border border-slate-800 flex flex-col justify-center h-full">
                 <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider border-b border-slate-800 pb-2">Controles de Conexión & Sesión</h3>
-                
                 <div class="grid grid-cols-1 gap-3">
                     <button onclick="generarNuevoQR()" class="bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-xs py-3 px-4 rounded-xl transition flex items-center justify-center gap-2 shadow-md">
                         <i data-lucide="refresh-cw" class="w-4 h-4"></i>
                         🔄 Generar Nuevo Código QR
                     </button>
-
                     <button onclick="desvincularWhatsApp()" class="bg-rose-700 hover:bg-rose-600 text-white font-bold text-xs py-3 px-4 rounded-xl transition flex items-center justify-center gap-2 shadow-md">
                         <i data-lucide="log-out" class="w-4 h-4"></i>
                         ⚡ Desvincular WhatsApp
                     </button>
                 </div>
-
-                <div class="pt-2 text-[11px] text-slate-500 space-y-1">
-                    <p>• <strong>Generar Nuevo QR:</strong> Borra credenciales anteriores y emite un escáner fresco.</p>
-                    <p>• <strong>Desvincular:</strong> Cierra el socket y elimina la sesión del dispositivo.</p>
-                </div>
             </div>
-
         </div>
     </section>
 
-
-    <!-- ======================================================= -->
-    <!-- 3. DEBAJO: CUADRO ÚNICO DE INSTRUCCIONES UNIVERSALES ("GEMA DE GEMINI") -->
-    <!-- ======================================================= -->
+    <!-- 3. INSTRUCCIONES DEL AGENTE UNIVERSAL -->
     <section class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-2xl space-y-4">
         <div class="flex items-center justify-between">
             <h2 class="text-sm font-bold text-slate-200 flex items-center gap-2">
                 <i data-lucide="sparkles" class="w-4 h-4 text-purple-400"></i>
                 3. Instrucciones del Agente Universal ("Gema de Gemini")
             </h2>
-            <span class="text-xs text-purple-400 bg-purple-500/10 px-3 py-1 rounded-full border border-purple-500/30 font-semibold">
-                Cuadro Único Persistente en config.json
-            </span>
         </div>
-
-        <p class="text-xs text-slate-400 leading-relaxed">
-            Escribe aquí directamente el comportamiento, tono, reglas, productos, precios y horarios de tu negocio. La IA responderá 100% basada en este cuadro.
-        </p>
-
-        <textarea id="txt-instrucciones" rows="7" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-xs text-slate-100 focus:outline-none focus:border-purple-500 transition-all leading-relaxed custom-scrollbar" placeholder="Ejemplo: Eres el asistente virtual de Restaurante El Sol. Ofrecemos Tacos ($25) y Tortas ($50). Horario de 9 AM a 9 PM. Sé breve y muy amable."></textarea>
-
+        <textarea id="txt-instrucciones" rows="7" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-xs text-slate-100 focus:outline-none focus:border-purple-500 transition-all leading-relaxed custom-scrollbar" placeholder="Instrucciones del Agente..."></textarea>
         <button onclick="guardarInstrucciones()" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-extrabold py-3 px-4 rounded-xl flex items-center justify-center gap-2 text-xs transition-all shadow-lg shadow-purple-900/30">
             <i data-lucide="save" class="w-4 h-4"></i>
-            💾 Guardar Instrucciones del Agente
+            💾 Guardar Solo Instrucciones
         </button>
     </section>
 
-
-    <!-- ======================================================= -->
-    <!-- 4. HASTA ABAJO: MÓDULO 1 (CLAVE API KEY DE GEMINI IA Y URL CLOUD) -->
-    <!-- ======================================================= -->
-    <section class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        
-        <!-- MÓDULO API KEY -->
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-2xl space-y-4">
-            <h2 class="text-sm font-bold text-slate-200 flex items-center gap-2">
-                <i data-lucide="key" class="w-4 h-4 text-amber-400"></i>
-                4. Módulo 1: Clave API Key de Gemini IA
-            </h2>
-            <div class="relative w-full">
-                <input type="password" id="txt-gemini-key" placeholder="Pega tu API Key de Gemini (AIzaSy...)" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 pr-10 text-xs text-white focus:outline-none focus:border-amber-500">
-                <button type="button" onclick="togglePasswordVisibilidad()" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1 focus:outline-none">
-                    <i data-lucide="eye" id="eye-icon" class="w-4 h-4"></i>
-                </button>
-            </div>
-            <button onclick="guardarApiKey()" class="w-full bg-amber-600 hover:bg-amber-500 text-slate-950 font-extrabold py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 text-xs">
-                <i data-lucide="save" class="w-4 h-4"></i>
-                💾 Guardar Clave API Key
+    <!-- 4. CLAVE API KEY DE IA -->
+    <section class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-2xl space-y-4">
+        <h2 class="text-sm font-bold text-slate-200 flex items-center gap-2">
+            <i data-lucide="key" class="w-4 h-4 text-amber-400"></i>
+            4. Clave API Key de IA (Gemini / DeepSeek / OpenRouter)
+        </h2>
+        <div class="relative w-full">
+            <input type="password" id="txt-gemini-key" placeholder="Pega tu API Key (sk- / AIza...)" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 pr-10 text-xs text-white focus:outline-none focus:border-amber-500 font-mono">
+            <button type="button" onclick="togglePasswordVisibilidad()" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1 focus:outline-none">
+                <i data-lucide="eye" id="eye-icon" class="w-4 h-4"></i>
             </button>
         </div>
 
-        <!-- MÓDULO URL DE SERVIDOR CLOUD (FIREBASE) -->
-        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-2xl space-y-4">
-            <h2 class="text-sm font-bold text-slate-200 flex items-center gap-2">
-                <i data-lucide="globe" class="w-4 h-4 text-cyan-400"></i>
-                URL Servidor Cloud (Firebase Sync)
-            </h2>
-            <input type="text" id="txt-cloud-url" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-cyan-500" placeholder="https://tu-servidor.onrender.com (O deja vacío para Localhost)">
-            <button onclick="guardarCloudUrl()" class="w-full bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-bold py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 text-xs">
-                <i data-lucide="link" class="w-4 h-4"></i>
-                💾 Guardar URL y Reconectar
-            </button>
+        <div class="p-2 bg-slate-950 rounded-xl border border-slate-800 flex items-center justify-between text-xs">
+            <span class="text-slate-400 font-bold text-[10px] uppercase">IA Detección:</span>
+            <span id="lbl-proveedor-detectado" class="font-extrabold text-amber-400">Cargando...</span>
         </div>
 
+        <button onclick="guardarApiKey()" class="w-full bg-amber-600 hover:bg-amber-500 text-slate-950 font-extrabold py-3 px-4 rounded-xl flex items-center justify-center gap-2 text-xs">
+            <i data-lucide="save" class="w-4 h-4"></i>
+            🔑 Guardar Solo API Key
+        </button>
     </section>
 
-    <!-- SCRIPT FRONTEND DE INTERACCIÓN Y WEBSOCKETS -->
+    <!-- ======================================================= -->
+    <!-- 5. HASTA ABAJO: PROBADOR DE IA WEB & INTERRUPTOR DE IA  -->
+    <!-- ======================================================= -->
+    <section class="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+        <!-- PROBADOR WEB DE IA (HASTA ABAJO) -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-2xl space-y-3 flex flex-col h-[380px]">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                <h2 class="text-sm font-bold text-slate-200 flex items-center gap-2">
+                    <i data-lucide="bot" class="w-4 h-4 text-purple-400"></i>
+                    5. Probador de IA (Web Libre)
+                </h2>
+                <span id="badge-modo-probador" class="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    🟢 Modo WhatsApp Activo
+                </span>
+            </div>
+
+            <div id="contenedor-chat-probador" class="flex-1 bg-slate-950 border border-slate-800 rounded-xl p-3 overflow-y-auto space-y-2 custom-scrollbar text-xs">
+                <div class="bg-slate-900 border border-slate-800 p-2.5 rounded-xl text-slate-300">
+                    <span class="text-[9px] font-bold text-purple-400 block mb-1">🤖 IA CLON</span>
+                    ¡Hola! Soy tu Agente Universal Vendedor. ¿En qué te puedo ayudar hoy?
+                </div>
+            </div>
+
+            <div class="flex gap-2">
+                <input type="text" id="txt-mensaje-probador" placeholder="Escribe una pregunta para probar a la IA..." onkeypress="if(event.key==='Enter') probarIAWeb()" class="flex-1 bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white focus:outline-none focus:border-purple-500">
+                <button onclick="probarIAWeb()" id="btn-probar-web" class="bg-purple-600 hover:bg-purple-500 text-white font-bold px-4 rounded-xl text-xs flex items-center justify-center">
+                    <i data-lucide="send" class="w-4 h-4"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- INTERRUPTOR CONECTAR / DESCONECTAR IA A WHATSAPP -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-2xl space-y-4 flex flex-col justify-between">
+            <div>
+                <h2 class="text-sm font-bold text-slate-200 flex items-center gap-2 border-b border-slate-800 pb-3 mb-4">
+                    <i data-lucide="power" class="w-4 h-4 text-emerald-400"></i>
+                    6. Interruptor de IA a WhatsApp
+                </h2>
+                <p class="text-xs text-slate-400 leading-relaxed mb-4">
+                    Usa este interruptor para encender las respuestas automáticas en WhatsApp real o pausarlas para hacer pruebas en la pantalla web.
+                </p>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-3">
+                <button onclick="cambiarPuente(true)" id="btn-puente-on" class="py-4 px-3 rounded-xl font-extrabold text-xs uppercase tracking-wider transition flex items-center justify-center gap-1.5 bg-emerald-600 text-white shadow-lg shadow-emerald-900/30">
+                    🟢 Conectar IA
+                </button>
+                <button onclick="cambiarPuente(false)" id="btn-puente-off" class="py-4 px-3 rounded-xl font-extrabold text-xs uppercase tracking-wider transition flex items-center justify-center gap-1.5 bg-slate-800 text-slate-400 hover:bg-red-900/40 hover:text-red-400">
+                    🔴 Desconectar IA
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- SCRIPT FRONTEND COMPLETO -->
     <script>
-        if (window.lucide) {
-            lucide.createIcons();
-        }
+        if (window.lucide) lucide.createIcons();
 
-        let savedCloudUrl = localStorage.getItem('cloud_backend_url') || "";
-        let backendUrl = savedCloudUrl.trim() !== "" ? savedCloudUrl : (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:3001' : window.location.origin);
-        
-        document.getElementById('txt-cloud-url').value = savedCloudUrl;
-
-        if (window.location.protocol === 'https:' && savedCloudUrl.trim() === "") {
-            const alertHttps = document.getElementById('alerta-https');
-            if (alertHttps) alertHttps.classList.remove('hidden');
-        }
-
+        let backendUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:3001' : window.location.origin;
         let socket = null;
         let sistemaEncendido = true;
+        let puenteActivo = true;
 
-        // 1. CARGAR CONFIGURACIÓN DESDE EL BACKEND AL ABRIR LA PÁGINA
+        function obtenerInfoProveedorFrontend(key) {
+            const k = (key || '').trim();
+            if (!k) return { nombre: "Sin API Key ingresada", clase: "text-slate-500 font-medium" };
+            if (k.startsWith('sk-or-')) return { nombre: "🟣 OpenRouter (DeepSeek R1 / V3)", clase: "text-purple-400 font-bold" };
+            if (k.startsWith('sk-')) return { nombre: "🔵 DeepSeek Oficial (platform.deepseek.com)", clase: "text-blue-400 font-bold" };
+            if (k.startsWith('AIza')) return { nombre: "🟢 Google Gemini (Google AI Studio)", clase: "text-emerald-400 font-bold" };
+            return { nombre: "🟡 API OpenAI-Compatible Genérica", clase: "text-amber-400 font-bold" };
+        }
+
         async function cargarConfiguracionInicial() {
             try {
                 const res = await fetch(`${backendUrl}/api/config`);
                 const data = await res.json();
                 if (data.success || data.config) {
                     const cfg = data.config || data;
-                    document.getElementById('txt-gemini-key').value = cfg.apiKey || '';
+                    const apiKeyInput = document.getElementById('txt-gemini-key');
+                    apiKeyInput.value = cfg.apiKey || '';
                     document.getElementById('txt-instrucciones').value = cfg.instruccionesUniversales || '';
-                    
                     sistemaEncendido = cfg.sistemaEncendido !== false;
+                    puenteActivo = cfg.puenteActivo !== false;
+                    
                     actualizarUIEstadoMaestro(sistemaEncendido);
+                    actualizarUIPuente(puenteActivo);
+
+                    const provInfo = obtenerInfoProveedorFrontend(cfg.apiKey);
+                    const lblProv = document.getElementById('lbl-proveedor-detectado');
+                    if (lblProv) {
+                        lblProv.innerText = data.proveedorNombre || provInfo.nombre;
+                        lblProv.className = provInfo.clase;
+                    }
                 }
-            } catch (e) {
-                console.error("Error al cargar configuración inicial:", e);
-            }
+            } catch (e) { console.error("Error al cargar configuración:", e); }
         }
 
-        // 2. CONECTAR WEBSOCKETS
         function conectarSockets() {
             socket = io(backendUrl, { transports: ['websocket', 'polling'] });
 
-            socket.on('connect', () => {
-                console.log('⚡ Conectado al servidor WebSocket');
-            });
-
-            // RECIBIR Y MOSTRAR CÓDIGO QR EN VIVO
             socket.on('whatsapp_qr', (qrBase64) => {
                 const img = document.getElementById('qr-image');
                 const placeholder = document.getElementById('qr-placeholder');
@@ -325,12 +293,11 @@
                     img.classList.add('hidden');
                     if (placeholder) placeholder.classList.remove('hidden');
                     if (txtPlaceholder) {
-                        txtPlaceholder.innerHTML = '<span class="text-emerald-400 font-bold flex items-center justify-center gap-2 text-sm">🟢 WHATSAPP CONECTADO Y OPERATIVO</span>';
+                        txtPlaceholder.innerHTML = '<span class="text-emerald-400 font-bold flex items-center justify-center gap-2 text-sm">🟢 WHATSAPP CONECTADO Y OPERATIVO (CLON)</span>';
                     }
                 }
             });
 
-            // RECIBIR CAMBIOS DE ESTADO DE WHATSAPP
             socket.on('whatsapp_status', (data) => {
                 const txtState = typeof data === 'string' ? data : (data.mensaje || data.estado);
                 const txtElem = document.getElementById('txt-estado-conexion');
@@ -340,22 +307,108 @@
 
                 if (txtElem) txtElem.innerText = txtState;
 
-                if (data.estado === 'conectado' || txtState.includes('CONECTADO Y OPERATIVO')) {
+                if (data.estado === 'conectado' || txtState.includes('conectado') || txtState.includes('connected')) {
                     img.classList.add('hidden');
                     placeholder.classList.remove('hidden');
-                    txtPlaceholder.innerHTML = "<div class='text-emerald-400 font-bold flex flex-col items-center gap-1'><i data-lucide='check-circle-2' class='w-10 h-10'></i><span>🟢 WHATSAPP CONECTADO Y OPERATIVO</span></div>";
+                    txtPlaceholder.innerHTML = "<div class='text-emerald-400 font-bold flex flex-col items-center gap-1'><i data-lucide='check-circle-2' class='w-10 h-10'></i><span>🟢 WHATSAPP CONECTADO Y OPERATIVO (CLON)</span></div>";
                     if (window.lucide) lucide.createIcons();
-                } else if (data.estado === 'apagado') {
-                    img.classList.add('hidden');
-                    placeholder.classList.remove('hidden');
-                    txtPlaceholder.innerHTML = "<span class='text-rose-400 font-bold'>🔴 SISTEMA APAGADO TOTALMENTE</span>";
                 }
             });
 
-            // RECIBIR Y MOSTRAR MENSAJES EN TIEMPO REAL (ÚNICO EVENTO)
+            socket.on('historial_chat', (historial) => {
+                const contenedor = document.getElementById('contenedor-mensajes-chat');
+                if (!contenedor) return;
+                contenedor.innerHTML = '';
+                historial.forEach(msg => agregarMensajeAlMonitor(msg));
+            });
+
             socket.on('nuevo_mensaje', (msg) => {
                 agregarMensajeAlMonitor(msg);
             });
+
+            socket.on('respuesta_ia_web', (res) => {
+                const chatProbador = document.getElementById('contenedor-chat-probador');
+                const btn = document.getElementById('btn-probar-web');
+                btn.disabled = false;
+                
+                if (res.ok && res.respuesta) {
+                    const msgHTML = `
+                        <div class="bg-slate-900 border border-slate-800 p-2.5 rounded-xl text-slate-300">
+                            <span class="text-[9px] font-bold text-purple-400 block mb-1">🤖 IA CLON</span>
+                            ${escapeHtml(res.respuesta)}
+                        </div>
+                    `;
+                    chatProbador.insertAdjacentHTML('beforeend', msgHTML);
+                } else {
+                    const msgHTML = `
+                        <div class="bg-red-950/60 border border-red-800/80 p-2.5 rounded-xl text-red-300">
+                            <span class="text-[9px] font-bold text-red-400 block mb-1">⚠️ ERROR IA</span>
+                            ${escapeHtml(res.error || 'Error al consultar IA.')}
+                        </div>
+                    `;
+                    chatProbador.insertAdjacentHTML('beforeend', msgHTML);
+                }
+                chatProbador.scrollTop = chatProbador.scrollHeight;
+            });
+
+            socket.on('puente_estado', (estado) => {
+                puenteActivo = estado;
+                actualizarUIPuente(estado);
+            });
+        }
+
+        function probarIAWeb() {
+            const input = document.getElementById('txt-mensaje-probador');
+            const msg = input.value.trim();
+            if (!msg) return;
+
+            const chatProbador = document.getElementById('contenedor-chat-probador');
+            const btn = document.getElementById('btn-probar-web');
+            btn.disabled = true;
+
+            const userHTML = `
+                <div class="bg-purple-950/60 border border-purple-800/80 p-2.5 rounded-xl text-purple-200 text-right">
+                    <span class="text-[9px] font-bold text-purple-400 block mb-1">👤 USUARIO</span>
+                    ${escapeHtml(msg)}
+                </div>
+            `;
+            chatProbador.insertAdjacentHTML('beforeend', userHTML);
+            input.value = '';
+            chatProbador.scrollTop = chatProbador.scrollHeight;
+
+            socket.emit('probar_ia_web', {
+                mensaje: msg,
+                instrucciones: document.getElementById('txt-instrucciones').value,
+                apiKey: document.getElementById('txt-gemini-key').value
+            });
+        }
+
+        function cambiarPuente(estado) {
+            puenteActivo = estado;
+            actualizarUIPuente(estado);
+            if (socket) socket.emit('toggle_puente', estado);
+        }
+
+        function actualizarUIPuente(estado) {
+            const btnOn = document.getElementById('btn-puente-on');
+            const btnOff = document.getElementById('btn-puente-off');
+            const badge = document.getElementById('badge-modo-probador');
+
+            if (estado) {
+                btnOn.className = "py-4 px-3 rounded-xl font-extrabold text-xs uppercase tracking-wider transition flex items-center justify-center gap-1.5 bg-emerald-600 text-white shadow-lg shadow-emerald-900/30";
+                btnOff.className = "py-4 px-3 rounded-xl font-extrabold text-xs uppercase tracking-wider transition flex items-center justify-center gap-1.5 bg-slate-800 text-slate-400 hover:bg-red-900/40 hover:text-red-400";
+                if (badge) {
+                    badge.innerText = "🟢 Modo WhatsApp Activo";
+                    badge.className = "text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
+                }
+            } else {
+                btnOff.className = "py-4 px-3 rounded-xl font-extrabold text-xs uppercase tracking-wider transition flex items-center justify-center gap-1.5 bg-red-600 text-white shadow-lg shadow-red-900/30";
+                btnOn.className = "py-4 px-3 rounded-xl font-extrabold text-xs uppercase tracking-wider transition flex items-center justify-center gap-1.5 bg-slate-800 text-slate-400 hover:bg-emerald-900/40 hover:text-emerald-400";
+                if (badge) {
+                    badge.innerText = "🔴 Pruebas Libres (WhatsApp Pausado)";
+                    badge.className = "text-[10px] font-bold px-2 py-0.5 rounded bg-red-500/10 text-red-400 border border-red-500/20";
+                }
+            }
         }
 
         function agregarMensajeAlMonitor(msg) {
@@ -369,8 +422,8 @@
             const esRecibido = msg.tipo === 'recibido';
             const msgHTML = `
                 <div class="flex flex-col ${esRecibido ? 'items-start' : 'items-end'}">
-                    <div class="max-w-[85%] rounded-lg p-3 text-xs ${esRecibido ? 'bg-slate-800 text-white border border-slate-700' : 'bg-emerald-600 text-white'}">
-                        <div class="font-bold text-[10px] text-slate-300 mb-1">${esRecibido ? '📱 Cliente (' + (msg.remitente || msg.pushName) + ')' : '🤖 Agente IA Gemini'}</div>
+                    <div class="max-w-[85%] rounded-lg p-3 text-xs ${esRecibido ? 'bg-slate-800 text-white border border-slate-700' : 'bg-purple-600 text-white'}">
+                        <div class="font-bold text-[10px] text-slate-300 mb-1">${esRecibido ? '📱 Cliente (' + (msg.remitente || msg.pushName) + ')' : '🤖 Agente IA Gemini (CLON)'}</div>
                         <p class="whitespace-pre-wrap">${escapeHtml(msg.texto || msg.mensaje)}</p>
                         <div class="text-[9px] text-slate-400 text-right mt-1">${msg.timestamp || ''}</div>
                     </div>
@@ -380,7 +433,6 @@
             contenedor.scrollTop = contenedor.scrollHeight;
         }
 
-        // 3. FUNCIONES DE INTERACCIÓN REST
         async function guardarApiKey() {
             const apiKey = document.getElementById('txt-gemini-key').value.trim();
             try {
@@ -390,10 +442,16 @@
                     body: JSON.stringify({ apiKey })
                 });
                 const data = await res.json();
-                if (data.success) alert("💾 " + data.message);
-            } catch (e) {
-                alert("❌ Error al guardar la API Key.");
-            }
+                if (data.success) {
+                    alert("💾 " + data.message + "\n\nProveedor Detectado: " + data.proveedorNombre);
+                    const provInfo = obtenerInfoProveedorFrontend(apiKey);
+                    const lblProv = document.getElementById('lbl-proveedor-detectado');
+                    if (lblProv) {
+                        lblProv.innerText = data.proveedorNombre || provInfo.nombre;
+                        lblProv.className = provInfo.clase;
+                    }
+                }
+            } catch (e) { alert("❌ Error al guardar la API Key."); }
         }
 
         async function guardarInstrucciones() {
@@ -406,9 +464,7 @@
                 });
                 const data = await res.json();
                 if (data.success) alert("💾 " + data.message);
-            } catch (e) {
-                alert("❌ Error al guardar las instrucciones.");
-            }
+            } catch (e) { alert("❌ Error al guardar las instrucciones."); }
         }
 
         async function generarNuevoQR() {
@@ -416,20 +472,16 @@
                 const res = await fetch(`${backendUrl}/api/generar-qr-nuevo`, { method: 'POST' });
                 const data = await res.json();
                 if (data.success) alert("🔄 " + data.message);
-            } catch (e) {
-                alert("❌ Error al generar nuevo Código QR.");
-            }
+            } catch (e) { alert("❌ Error al generar nuevo Código QR."); }
         }
 
         async function desvincularWhatsApp() {
-            if (!confirm("⚠️ ¿Estás seguro de que deseas desvincular WhatsApp? Deberás escanear un nuevo Código QR.")) return;
+            if (!confirm("⚠️ ¿Estás seguro de que deseas desvincular WhatsApp en CLON?")) return;
             try {
                 const res = await fetch(`${backendUrl}/api/desvincular`, { method: 'POST' });
                 const data = await res.json();
                 if (data.success) alert("⚡ " + data.message);
-            } catch (e) {
-                alert("❌ Error al desvincular WhatsApp.");
-            }
+            } catch (e) { alert("❌ Error al desvincular WhatsApp."); }
         }
 
         async function toggleEncendidoMaestro() {
@@ -441,9 +493,7 @@
                     sistemaEncendido = !sistemaEncendido;
                     actualizarUIEstadoMaestro(sistemaEncendido);
                 }
-            } catch (e) {
-                alert("❌ Error al cambiar estado maestro.");
-            }
+            } catch (e) { alert("❌ Error al cambiar estado."); }
         }
 
         function actualizarUIEstadoMaestro(encendido) {
@@ -453,230 +503,78 @@
 
             if (encendido) {
                 if (badge) {
-                    badge.innerText = "🟢 SISTEMA ENCENDIDO";
+                    badge.innerText = "🟢 SISTEMA ENCENDIDO (CLON)";
                     badge.className = "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
                 }
                 if (btn) btn.className = "px-4 py-2 rounded-lg text-xs font-bold transition-all shadow-lg flex items-center space-x-2 bg-red-600 hover:bg-red-500 text-white shadow-red-900/30";
                 if (txtBtn) txtBtn.innerText = "🔴 APAGAR TOTALMENTE";
             } else {
                 if (badge) {
-                    badge.innerText = "🔴 SISTEMA APAGADO TOTALMENTE";
+                    badge.innerText = "🔴 SISTEMA APAGADO TOTALMENTE (CLON)";
                     badge.className = "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-red-500/10 text-red-400 border border-red-500/20";
                 }
                 if (btn) btn.className = "px-4 py-2 rounded-lg text-xs font-bold transition-all shadow-lg flex items-center space-x-2 bg-emerald-600 hover:bg-emerald-500 text-white shadow-emerald-900/30";
                 if (txtBtn) txtBtn.innerText = "🟢 ENCENDER SISTEMA";
-
-                const img = document.getElementById('qr-image');
-                const placeholder = document.getElementById('qr-placeholder');
-                if (img) img.classList.add('hidden');
-                if (placeholder) placeholder.classList.remove('hidden');
             }
         }
 
         function togglePasswordVisibilidad() {
             const input = document.getElementById('txt-gemini-key');
-            if (input) input.type = input.type === 'password' ? 'text' : 'password';
-        }
-
-        function guardarCloudUrl() {
-            const url = document.getElementById('txt-cloud-url').value.trim();
-            localStorage.setItem('cloud_backend_url', url);
-            alert("💾 URL guardada. La página se recargará para conectar.");
-            window.location.reload();
-        }
-
-        function limpiarChat() {
-            const container = document.getElementById('contenedor-mensajes-chat');
-            if (container) container.innerHTML = `<div class="text-slate-500 italic text-center py-10">Esperando mensajes entrantes de WhatsApp...</div>`;
-        }
-
-        function escapeHtml(text) {
-            if (!text) return '';
-            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-        }
-
-        // -------------------------------------------------------------
-        // CONFIGURACIÓN DEL MODO SIGILO (STEALTH SCREEN) Y SEGURIDAD PIN
-        // -------------------------------------------------------------
-        const CLAVE_PIN_CORRECTA = "9876";
-        const TOQUES_REQUERIDOS = 5;
-        const TIEMPO_LIMITE_MS = 3000;
-
-        let contadorToques = 0;
-        let temporizadorToques = null;
-
-        function registrarToqueSecreto(e) {
-            if (e) e.preventDefault();
-            contadorToques++;
-            
-            clearTimeout(temporizadorToques);
-            temporizadorToques = setTimeout(() => {
-                contadorToques = 0;
-            }, TIEMPO_LIMITE_MS);
-
-            if (contadorToques >= TOQUES_REQUERIDOS) {
-                contadorToques = 0;
-                mostrarModalPin();
-            }
-        }
-
-        function mostrarModalPin() {
-            const modal = document.getElementById("pin-modal");
-            const blankView = document.getElementById("stealth-blank-view");
-            const pinInput = document.getElementById("txt-secret-pin");
-            const errorLbl = document.getElementById("lbl-pin-error");
-
-            if (blankView) blankView.classList.add("hidden");
-            if (modal) modal.classList.remove("hidden");
-            if (errorLbl) errorLbl.classList.add("hidden");
-            if (pinInput) {
-                pinInput.value = "";
-                pinInput.focus();
-            }
-        }
-
-        function cancelarIngresoPin() {
-            const modal = document.getElementById("pin-modal");
-            const blankView = document.getElementById("stealth-blank-view");
-            if (modal) modal.classList.add("hidden");
-            if (blankView) blankView.classList.remove("hidden");
-        }
-
-        function verificarPin() {
-            const inputPin = document.getElementById("txt-secret-pin") ? document.getElementById("txt-secret-pin").value.trim() : "";
-            const errorLbl = document.getElementById("lbl-pin-error");
-
-            if (inputPin === CLAVE_PIN_CORRECTA) {
-                sessionStorage.setItem("agente_autenticado", "true");
-                ocultarPantallaSigilo();
-            } else {
-                if (errorLbl) errorLbl.classList.remove("hidden");
-                const pinInput = document.getElementById("txt-secret-pin");
-                if (pinInput) {
-                    pinInput.value = "";
-                    pinInput.focus();
-                }
-            }
-        }
-
-        function ocultarPantallaSigilo() {
-            const stealthScreen = document.getElementById("stealth-screen");
-            if (stealthScreen) {
-                stealthScreen.classList.add("opacity-0", "pointer-events-none");
-                setTimeout(() => {
-                    stealthScreen.classList.add("hidden");
-                }, 500);
-            }
-            iniciarTemporizadorInactividad();
-        }
-
-        // -------------------------------------------------------------
-        // TEMPORIZADOR DE INACTIVIDAD (15 MINUTOS) Y BLOQUEO DE PANEL
-        // -------------------------------------------------------------
-        const TIEMPO_INACTIVIDAD_MS = 15 * 60 * 1000; // 15 Minutos
-        let timerInactividad = null;
-        let timerConteoRegresivo = null;
-        let segundosRestantes = 15;
-
-        function bloquearPanelManual() {
-            sessionStorage.removeItem("agente_autenticado");
-            const stealthScreen = document.getElementById("stealth-screen");
-            const warningModal = document.getElementById("inactivity-warning-modal");
-            
-            if (warningModal) warningModal.classList.add("hidden");
-            if (stealthScreen) {
-                stealthScreen.classList.remove("hidden", "opacity-0", "pointer-events-none");
-            }
-            cancelarIngresoPin();
-        }
-
-        function iniciarTemporizadorInactividad() {
-            clearTimeout(timerInactividad);
-            clearInterval(timerConteoRegresivo);
-
-            const warningModal = document.getElementById("inactivity-warning-modal");
-            if (warningModal) warningModal.classList.add("hidden");
-
-            timerInactividad = setTimeout(() => {
-                const autenticado = sessionStorage.getItem("agente_autenticado");
-                if (autenticado === "true") {
-                    mostrarAdvertenciaInactividad();
-                }
-            }, TIEMPO_INACTIVIDAD_MS);
-        }
-
-        function mostrarAdvertenciaInactividad() {
-            const warningModal = document.getElementById("inactivity-warning-modal");
-            const lblCountdown = document.getElementById("lbl-countdown-sec");
-            
-            if (warningModal) warningModal.classList.remove("hidden");
-            segundosRestantes = 15;
-            if (lblCountdown) lblCountdown.innerText = segundosRestantes;
-
-            clearInterval(timerConteoRegresivo);
-            timerConteoRegresivo = setInterval(() => {
-                segundosRestantes--;
-                if (lblCountdown) lblCountdown.innerText = segundosRestantes;
-
-                if (segundosRestantes <= 0) {
-                    clearInterval(timerConteoRegresivo);
-                    bloquearPanelManual();
-                }
-            }, 1000);
-        }
-
-        function resetearTemporizadorInactividadManual() {
-            clearInterval(timerConteoRegresivo);
-            const warningModal = document.getElementById("inactivity-warning-modal");
-            if (warningModal) warningModal.classList.add("hidden");
-            iniciarTemporizadorInactividad();
-        }
-
-        function togglePasswordVisibilidad() {
-            const input = document.getElementById('txt-gemini-key');
-            const eyeIcon = document.getElementById('eye-icon');
-            if (!input) return;
+            const icon = document.getElementById('eye-icon');
             if (input.type === 'password') {
                 input.type = 'text';
-                if (eyeIcon) eyeIcon.setAttribute('data-lucide', 'eye-off');
+                icon.setAttribute('data-lucide', 'eye-off');
             } else {
                 input.type = 'password';
-                if (eyeIcon) eyeIcon.setAttribute('data-lucide', 'eye');
+                icon.setAttribute('data-lucide', 'eye');
             }
             if (window.lucide) lucide.createIcons();
         }
 
+        function escapeHtml(text) {
+            if (!text) return "";
+            return text.toString()
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        // SEGURIDAD CON PIN
+        const PIN_CORRECTO = "1234";
+        function mostrarModalPin() {
+            document.getElementById('pin-modal').classList.remove('hidden');
+            document.getElementById('stealth-blank-view').classList.add('hidden');
+        }
+        function cancelarIngresoPin() {
+            document.getElementById('pin-modal').classList.add('hidden');
+            document.getElementById('stealth-blank-view').classList.remove('hidden');
+        }
+        function verificarPin() {
+            const pin = document.getElementById('txt-secret-pin').value;
+            if (pin === PIN_CORRECTO) {
+                document.getElementById('stealth-screen').classList.add('opacity-0');
+                setTimeout(() => document.getElementById('stealth-screen').classList.add('hidden'), 500);
+            } else {
+                document.getElementById('lbl-pin-error').classList.remove('hidden');
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
-            const autenticado = sessionStorage.getItem("agente_autenticado");
-            if (autenticado === "true") {
-                ocultarPantallaSigilo();
-            }
-
-            const triggerArea = document.getElementById("secret-corner-trigger");
-            if (triggerArea) {
-                triggerArea.addEventListener("click", registrarToqueSecreto);
-                triggerArea.addEventListener("touchstart", registrarToqueSecreto, { passive: false });
-            }
-
-            const pinInput = document.getElementById("txt-secret-pin");
-            if (pinInput) {
-                pinInput.addEventListener("keypress", (e) => {
-                    if (e.key === "Enter") verificarPin();
-                });
-            }
-
-            // Escuchar cualquier actividad del usuario (mouse, teclado, toques) para resetear el temporizador de 30 min
-            const eventosActividad = ['mousemove', 'keydown', 'click', 'touchstart', 'scroll'];
-            eventosActividad.forEach(evt => {
-                window.addEventListener(evt, () => {
-                    if (sessionStorage.getItem("agente_autenticado") === "true") {
-                        iniciarTemporizadorInactividad();
-                    }
-                }, { passive: true });
-            });
-
             cargarConfiguracionInicial();
             conectarSockets();
+            const keyInput = document.getElementById('txt-gemini-key');
+            if (keyInput) {
+                keyInput.addEventListener('input', (e) => {
+                    const provInfo = obtenerInfoProveedorFrontend(e.target.value);
+                    const lblProv = document.getElementById('lbl-proveedor-detectado');
+                    if (lblProv) {
+                        lblProv.innerText = provInfo.nombre;
+                        lblProv.className = provInfo.clase;
+                    }
+                });
+            }
         });
     </script>
 </body>
