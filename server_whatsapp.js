@@ -274,15 +274,13 @@ async function consultarGeminiHTTPS(promptUsuario, historial = []) {
 
     const apiKey = (configActual.apiKey && !configActual.apiKey.includes('••••')) 
         ? configActual.apiKey.trim() 
-        : "AIzaSyAmkE43dVGwMZg6nF5lcQFPWe95Kv7Fgwk";
+        : "AIzaSyC6m1vQDrODxPWX_tsIpHsEBR32garG2V4";
 
     const systemInstructionPura = (configActual.instruccionesUniversales && configActual.instruccionesUniversales.trim() !== "")
         ? configActual.instruccionesUniversales.trim()
         : "Eres un Agente Virtual de Atención al Cliente atento, profesional y servicial. Responde siempre de forma amigable y concisa.";
 
     const modelos = ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-2.0-flash-lite"];
-    let tuvoErrorCuota = false;
-    let tuvoErrorKeyRevocada = false;
 
     // CONSTRUIR PAYLOAD INLINE (PROBADO EN TUNEL CLOUD)
     const contentsPayload = [
@@ -352,29 +350,11 @@ async function consultarGeminiHTTPS(promptUsuario, historial = []) {
                 return respuesta.trim();
             }
         } catch (e) {
-            if (e.message.includes('429')) {
-                tuvoErrorCuota = true;
-                console.warn(`⚠️ Modelo ${modelo} superó el límite de cuota (HTTP 429).`);
-            } else if (e.message.includes('403') || e.message.includes('leaked')) {
-                tuvoErrorKeyRevocada = true;
-                console.warn(`🚨 API Key revocada en modelo ${modelo} (HTTP 403).`);
-            } else {
-                console.warn(`⚠️ Modelo ${modelo} falló (${e.message}). Intentando siguiente...`);
-            }
+            console.warn(`⚠️ Modelo ${modelo} falló (${e.message}). Intentando siguiente...`);
         }
     }
 
-    if (tuvoErrorKeyRevocada) {
-        io.emit('nuevo_mensaje', {
-            id: Date.now().toString(),
-            remitente: 'SISTEMA ALERTA API',
-            texto: "🚨 Tu clave API Key de Gemini fue deshabilitada por Google (HTTP 403). Ingresa una clave limpia en el Módulo 1.",
-            tipo: 'enviado',
-            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        });
-    }
-
-    return "¡Hola! Gracias por comunicarte. He recibido tu mensaje y estoy a tus órdenes para ayudarte en lo que necesites. 😊";
+    return null;
 }
 
 // 6. ENDPOINTS REST API DE EXPRESS
