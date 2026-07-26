@@ -105,15 +105,23 @@ async function iniciarBaileys() {
         io.emit('whatsapp_status', { estado: 'conectando', mensaje: 'Iniciando WhatsApp...' });
         io.emit('sistema_status', { encendido: true, mensaje: "🟢 SISTEMA CONECTADO Y OPERATIVO" });
 
-        const { state, saveCreds } = await useMultiFileAuthState(AUTH_FOLDER);
-        const { version } = await fetchLatestBaileysVersion();
+        let version;
+        try {
+            const vRes = await fetchLatestBaileysVersion();
+            version = vRes.version;
+        } catch (e) {
+            version = [2, 3000, 1015901307];
+        }
 
         sock = makeWASocket({
             version,
             auth: state,
-            printQRInTerminal: true,
+            printQRInTerminal: false,
             logger: pino({ level: 'silent' }),
-            browser: ['Agente Universal', 'Chrome', '1.0.0']
+            browser: ['Ubuntu', 'Chrome', '20.0.04'],
+            syncFullHistory: false,
+            markOnlineOnConnect: false,
+            connectTimeoutMs: 30000
         });
 
         sock.ev.on('creds.update', saveCreds);
