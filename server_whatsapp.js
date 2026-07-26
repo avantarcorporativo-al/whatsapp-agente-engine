@@ -272,9 +272,10 @@ async function consultarGeminiHTTPS(promptUsuario, historial = []) {
         ? configActual.instruccionesUniversales.trim()
         : "Eres un Agente Virtual de Atención al Cliente atento, profesional y servicial. Responde siempre de forma amigable y concisa.";
 
-    // Modelos solicitados: gemini-2.5-flash siempre primero y gemini-2.5-flash-lite únicamente en caso de emergencia
-    const modelos = ["gemini-2.5-flash", "gemini-2.5-flash-lite"];
+    // Modelos activos validos en Google AI Studio (v1beta)
+    const modelos = ["gemini-2.0-flash", "gemini-1.5-flash-latest", "gemini-2.0-flash-lite-preview-02-05"];
     let tuvoErrorCuota = false;
+    let tuvoErrorKeyRevocada = false;
 
     for (const modelo of modelos) {
         try {
@@ -286,21 +287,29 @@ async function consultarGeminiHTTPS(promptUsuario, historial = []) {
         } catch (e) {
             if (e.message.includes('429')) {
                 tuvoErrorCuota = true;
-                console.warn(`⚠️ Modelo ${modelo} superó el límite de cuota (HTTP 429 Rate Limit/Quota).`);
+                console.warn(`⚠️ Modelo ${modelo} superó el límite de cuota (HTTP 429 Rate Limit).`);
+            } else if (e.message.includes('403') || e.message.includes('leaked') || e.message.includes('API key')) {
+                tuvoErrorKeyRevocada = true;
+                console.warn(`🚨 La API Key de Gemini fue reportada como filtrada/revocada por Google (HTTP 403).`);
             } else {
                 console.warn(`⚠️ Modelo ${modelo} falló (${e.message}). Intentando siguiente modelo...`);
             }
         }
     }
 
-    if (tuvoErrorCuota) {
-        console.error("🚨 LA CLAVE API KEY DE GEMINI HA ALCANZADO SU LÍMITE DE CUOTA DE PETICIONES (HTTP 429).");
-        console.error("💡 Por favor genera una nueva API Key gratuita en https://aistudio.google.com/app/apikey e ingrésala en el Módulo 1 del panel.");
-        
+    if (tuvoErrorKeyRevocada) {
         io.emit('nuevo_mensaje', {
             id: Date.now().toString(),
             remitente: 'SISTEMA ALERTA API',
-            texto: "⚠️ La API Key actual de Gemini alcanzó el límite de peticiones (HTTP 429). Por favor actualiza la clave en el Módulo 1 con una nueva API Key gratuita de Google AI Studio.",
+            texto: "🚨 Tu clave API Key de Gemini fue deshabilitada por Google (HTTP 403: Leaked Key). Por favor genera una nueva API Key gratuita en https://aistudio.google.com/app/apikey e ingrésala en el Módulo 1.",
+            tipo: 'enviado',
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        });
+    } else if (tuvoErrorCuota) {
+        io.emit('nuevo_mensaje', {
+            id: Date.now().toString(),
+            remitente: 'SISTEMA ALERTA API',
+            texto: "⚠️ La API Key de Gemini alcanzó el límite de peticiones (HTTP 429). Por favor actualiza la clave en el Módulo 1 con una nueva API Key gratuita de Google AI Studio.",
             tipo: 'enviado',
             timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         });
