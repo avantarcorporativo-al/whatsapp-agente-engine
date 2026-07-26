@@ -99,7 +99,12 @@ async function consultarGeminiHTTPS(promptCliente, historial = []) {
     }
 
     const instrucciones = configActual.instruccionesUniversales || "Eres un Agente Virtual atento y servicial.";
-    const modelos = [configActual.modeloGemini || "gemini-2.0-flash", "gemini-1.5-flash", "gemini-2.5-flash"];
+    const modelos = [
+        configActual.modeloGemini || "gemini-2.0-flash",
+        "gemini-2.0-flash-lite",
+        "gemini-2.5-flash-lite",
+        "gemini-flash-lite-latest"
+    ];
     const modelosUnicos = [...new Set(modelos)];
 
     // Construir historial limpio con alternancia estricta
