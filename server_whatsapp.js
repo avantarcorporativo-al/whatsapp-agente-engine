@@ -178,183 +178,193 @@ async function iniciarBaileys() {
             }
         });
 
-        // ESCUCHA DE MENSAJES ENTRANTES EN TIEMPO REAL
+        // RECEPTO DE MENSAJES ENTRANTES (messages.upsert)
         sock.ev.on('messages.upsert', async (m) => {
-            if (m.type !== 'notify') return;
-            if (!configActual.sistemaEncendido || !configActual.puenteActivo) return;
+            try {
+                const msg = m.messages[0];
+                if (!msg || msg.key.fromMe) return;
 
-            for (const msg of m.messages) {
-                if (msg.key.fromMe) continue;
+                const remitente = obtenerJIDValido(msg);
+                if (!remitente) return;
 
-                const remitente = msg.key.remoteJid;
                 const textoEntrante = msg.message?.conversation || 
                                      msg.message?.extendedTextMessage?.text || 
-                                     msg.message?.imageMessage?.caption ||
+                                     msg.message?.imageMessage?.caption || 
                                      "";
 
-                if (!textoEntrante.trim()) continue;
+                if (!textoEntrante.trim()) return;
 
-                console.log(`📩 Mensaje Recibido de [${remitente}]: ${textoEntrante}`);
-                const numCliente = remitente.replace('@s.whatsapp.net', '');
+                console.log(`💬 [WHATSAPP RECIBIDO]: ${textoEntrante} (De: ${remitente})`);
 
-                const chatLogMsg = {
-                    id: msg.key.id,
-                    remitente: numCliente,
-                    texto: textoEntrante,
-                    tipo: 'recibido',
-                    timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                };
-
-                // EMISIÓN ÚNICA AL MONITOR DE CHATS
-                io.emit('nuevo_mensaje', chatLogMsg);
-
-                if (configActual.apiKey) {
-                    procesarRespuestaIA(remitente, textoEntrante);
-                } else {
-                    console.log('⚠️ No hay API Key de Gemini configurada. Respuesta omitida.');
+                if (io) {
+                    io.emit('nuevo_mensaje', {
+                        id: msg.key.id || Date.now().toString(),
+                        remitente: remitente.replace('@s.whatsapp.net', '').replace('@lid', ''),
+                        texto: textoEntrante,
+                        tipo: 'recibido',
+                        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                    });
                 }
+
+                if (configActual.puenteActivo && configActual.sistemaEncendido) {
+                    await procesarRespuestaIA(remitente, textoEntrante);
+                }
+            } catch (e) {
+                console.error("Error en messages.upsert:", e);
             }
         });
 
     } catch (err) {
         console.error('❌ Error fatal al iniciar Baileys:', err.message);
-        estadoConexion = 'error';
-        io.emit('whatsapp_status', { estado: 'error', mensaje: 'Error de Inicialización' });
     }
 }
-
-// 5. PROCESADOR DE RESPUESTA CON GEMINI IA MODO GEMA UNIVERSAL
-async function procesarRespuestaIA(remitente, textoUsuario) {
-    try {
-        if (!dynamicHistorialChat[remitente]) {
-            dynamicHistorialChat[remitente] = [];
-        }
-
-        dynamicHistorialChat[remitente].push({
-            role: 'user',
-            texto: textoUsuario
-        });
-
-        if (dynamicHistorialChat[remitente].length > 10) {
-            dynamicHistorialChat[remitente] = dynamicHistorialChat[remitente].slice(-10);
-        }
-
-        const respuestaTexto = await consultarGeminiHTTPS(textoUsuario, dynamicHistorialChat[remitente]);
-
-        if (respuestaTexto && sock && estadoConexion === 'conectado') {
-            await sock.sendMessage(remitente, { text: respuestaTexto });
-            console.log(`🤖 Respuesta Dinámica enviada a [${remitente}]: ${respuestaTexto}`);
-
-            dynamicHistorialChat[remitente].push({
-                role: 'model',
-                texto: respuestaTexto
-            });
-
-            const chatLogRes = {
-                id: Date.now().toString(),
-                remitente: remitente.replace('@s.whatsapp.net', ''),
-                texto: respuestaTexto,
-                tipo: 'enviado',
-                timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-            };
-
-            io.emit('nuevo_mensaje', chatLogRes);
-        }
-    } catch (error) {
-        console.error('❌ Error al generar respuesta con Gemini IA:', error.message);
+function obtenerJIDValido(msg) {
+    if (!msg || !msg.key) return null;
+    let jid = msg.key.remoteJid || "";
+    
+    if (msg.key.participant) {
+        jid = msg.key.participant;
     }
+    
+    if (jid.endsWith('@lid')) {
+        if (msg.key.remoteJidAlt && msg.key.remoteJidAlt.endsWith('@s.whatsapp.net')) {
+            jid = msg.key.remoteJidAlt;
+        }
+    }
+    
+    return jid;
 }
 
-// CONSULTA OPTIMIZADA A MODELOS GRATUITOS ACTIVOS EN GOOGLE AI STUDIO (v1beta)
+// =========================================================
+// 2. CONSULTA HTTPS COMPATIBLE CON GEMINI 2.5 FLASH REST
+// =========================================================
 async function consultarGeminiHTTPS(promptUsuario, historial = []) {
-    if (!configActual.sistemaEncendido) {
-        console.log("⏸️ Sistema apagado. Omitiendo respuesta de IA.");
-        return null;
-    }
-
+    if (!configActual.sistemaEncendido) return null;
+    
     const apiKey = (configActual.apiKey && !configActual.apiKey.includes('••••')) 
         ? configActual.apiKey.trim() 
         : "AIzaSyC6m1vQDrODxPWX_tsIpHsEBR32garG2V4";
 
-    const systemInstructionPura = (configActual.instruccionesUniversales && configActual.instruccionesUniversales.trim() !== "")
-        ? configActual.instruccionesUniversales.trim()
-        : "Eres un Agente Virtual de Atención al Cliente atento, profesional y servicial. Responde siempre de forma amigable y concisa.";
+    if (!apiKey) {
+        console.error("❌ Error: No hay API Key configurada.");
+        return null;
+    }
 
-    const modelos = ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-2.0-flash-lite"];
+    const instrucciones = configActual.instruccionesUniversales || "Eres un Agente Virtual atento y servicial.";
+    const modelo = "gemini-2.5-flash";
 
-    // CONSTRUIR PAYLOAD INLINE (PROBADO EN TUNEL CLOUD)
-    const contentsPayload = [
-        {
-            role: 'user',
-            parts: [{ text: systemInstructionPura }]
-        },
-        {
-            role: 'model',
-            parts: [{ text: '¡Entendido! Responderé de forma concisa y servicial siguiendo tus instrucciones.' }]
-        }
-    ];
-
+    const contentsPayload = [];
+    
     if (Array.isArray(historial) && historial.length > 0) {
         historial.forEach(item => {
             const role = item.role === 'model' ? 'model' : 'user';
-            const text = item.texto || item.text || "";
-            if (text.trim()) {
+            const texto = item.texto || item.text || "";
+            if (texto.trim()) {
                 contentsPayload.push({
                     role: role,
-                    parts: [{ text: text.trim() }]
+                    parts: [{ text: texto.trim() }]
                 });
             }
         });
     }
 
-    const payload = JSON.stringify({ contents: contentsPayload });
+    contentsPayload.push({
+        role: 'user',
+        parts: [{ text: promptUsuario.trim() }]
+    });
 
-    for (const modelo of modelos) {
-        try {
-            const respuesta = await new Promise((resolve, reject) => {
-                const options = {
-                    hostname: 'generativelanguage.googleapis.com',
-                    path: `/v1beta/models/${modelo}:generateContent?key=${apiKey}`,
-                    method: 'POST',
-                    rejectUnauthorized: false,
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Content-Length': Buffer.byteLength(payload)
-                    }
-                };
-
-                const req = https.request(options, (res) => {
-                    let body = '';
-                    res.on('data', chunk => body += chunk);
-                    res.on('end', () => {
-                        if (res.statusCode === 200) {
-                            try {
-                                const json = JSON.parse(body);
-                                const reply = json.candidates?.[0]?.content?.parts?.[0]?.text;
-                                if (reply && reply.trim()) return resolve(reply.trim());
-                            } catch (e) {
-                                return reject(new Error(`JSON Parse Error: ${e.message}`));
-                            }
-                        }
-                        reject(new Error(`HTTP ${res.statusCode}: ${body.substring(0, 100)}`));
-                    });
-                });
-
-                req.on('error', (err) => reject(err));
-                req.write(payload);
-                req.end();
-            });
-
-            if (respuesta && respuesta.trim()) {
-                console.log(`✨ Respuesta recibida de Google AI Studio [${modelo}] OK`);
-                return respuesta.trim();
-            }
-        } catch (e) {
-            console.warn(`⚠️ Modelo ${modelo} falló (${e.message}). Intentando siguiente...`);
+    const postData = JSON.stringify({
+        system_instruction: {
+            parts: [{ text: instrucciones }]
+        },
+        contents: contentsPayload,
+        generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 800
         }
-    }
+    });
 
-    return null;
+    const options = {
+        hostname: 'generativelanguage.googleapis.com',
+        port: 443,
+        path: `/v1beta/models/${modelo}:generateContent?key=${apiKey}`,
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(postData)
+        }
+    };
+
+    return new Promise((resolve) => {
+        const req = https.request(options, (res) => {
+            let body = '';
+            res.on('data', chunk => body += chunk);
+            res.on('end', () => {
+                if (res.statusCode === 200) {
+                    try {
+                        const json = JSON.parse(body);
+                        const respuesta = json.candidates?.[0]?.content?.parts?.[0]?.text;
+                        if (respuesta && respuesta.trim()) {
+                            return resolve(respuesta.trim());
+                        }
+                    } catch (e) {
+                        console.error("❌ Error al parsear JSON de Gemini:", e.message);
+                    }
+                }
+                console.error(`❌ Gemini API Error HTTP ${res.statusCode}: ${body.substring(0, 200)}`);
+                resolve(null);
+            });
+        });
+
+        req.on('error', (err) => {
+            console.error("❌ Error de red con Gemini:", err.message);
+            resolve(null);
+        });
+
+        req.write(postData);
+        req.end();
+    });
+}
+
+// =========================================================
+// 3. PROCESADOR DE RESPUESTA DE IA EN WHATSAPP
+// =========================================================
+async function procesarRespuestaIA(remitenteJID, textoCliente) {
+    try {
+        if (!remitenteJID || !textoCliente) return;
+
+        if (!dynamicHistorialChat[remitenteJID]) {
+            dynamicHistorialChat[remitenteJID] = [];
+        }
+
+        const respuestaIA = await consultarGeminiHTTPS(textoCliente, dynamicHistorialChat[remitenteJID]);
+
+        if (respuestaIA && sock) {
+            dynamicHistorialChat[remitenteJID].push({ role: 'user', texto: textoCliente });
+            dynamicHistorialChat[remitenteJID].push({ role: 'model', texto: respuestaIA });
+
+            if (dynamicHistorialChat[remitenteJID].length > 10) {
+                dynamicHistorialChat[remitenteJID] = dynamicHistorialChat[remitenteJID].slice(-10);
+            }
+
+            await sock.sendMessage(remitenteJID, { text: respuestaIA });
+            console.log(`🤖 [AGENTE IA ENVIÓ A ${remitenteJID}]: ${respuestaIA}`);
+
+            if (io) {
+                io.emit('nuevo_mensaje', {
+                    id: Date.now().toString(),
+                    remitente: remitenteJID.replace('@s.whatsapp.net', '').replace('@lid', ''),
+                    texto: respuestaIA,
+                    tipo: 'enviado',
+                    timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                });
+            }
+        } else {
+            console.warn(`⚠️ No se pudo enviar mensaje a ${remitenteJID}. Gemini devolvió vacío o socket desatendido.`);
+        }
+    } catch (err) {
+        console.error("❌ Error crítico en procesarRespuestaIA:", err.message);
+    }
 }
 
 // 6. ENDPOINTS REST API DE EXPRESS

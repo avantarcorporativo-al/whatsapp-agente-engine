@@ -316,14 +316,17 @@
                 const placeholder = document.getElementById('qr-placeholder');
                 const txtPlaceholder = document.getElementById('qr-placeholder-text');
 
-                if (qrBase64 && sistemaEncendido) {
+                if (qrBase64) {
                     img.src = qrBase64;
                     img.classList.remove('hidden');
-                    placeholder.classList.add('hidden');
-                } else if (!qrBase64 && sistemaEncendido) {
+                    if (placeholder) placeholder.classList.add('hidden');
+                } else {
                     img.src = '';
                     img.classList.add('hidden');
-                    placeholder.classList.remove('hidden');
+                    if (placeholder) placeholder.classList.remove('hidden');
+                    if (txtPlaceholder) {
+                        txtPlaceholder.innerHTML = '<span class="text-emerald-400 font-bold flex items-center justify-center gap-2 text-sm">🟢 WHATSAPP CONECTADO Y OPERATIVO</span>';
+                    }
                 }
             });
 
