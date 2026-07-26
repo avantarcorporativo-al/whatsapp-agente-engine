@@ -178,14 +178,15 @@ async function iniciarBaileys() {
             }
         });
 
-        // RECEPTO DE MENSAJES ENTRANTES (messages.upsert)
+        // RECEPTOR DE MENSAJES ENTRANTES EN SERVIDORES NODE.JS (messages.upsert)
         sock.ev.on('messages.upsert', async (m) => {
             try {
                 const msg = m.messages[0];
                 if (!msg || msg.key.fromMe) return;
 
-                const remitente = obtenerJIDValido(msg);
-                if (!remitente) return;
+                const remitenteRaw = msg.key.remoteJid || "";
+                const jidLimpio = normalizarJID(remitenteRaw);
+                if (!jidLimpio) return;
 
                 const textoEntrante = msg.message?.conversation || 
                                      msg.message?.extendedTextMessage?.text || 
@@ -194,12 +195,12 @@ async function iniciarBaileys() {
 
                 if (!textoEntrante.trim()) return;
 
-                console.log(`💬 [WHATSAPP RECIBIDO]: ${textoEntrante} (De: ${remitente})`);
+                console.log(`💬 [WHATSAPP RECIBIDO EN SERVIDOR]: ${textoEntrante} (JID Normalizado: ${jidLimpio})`);
 
                 if (io) {
                     io.emit('nuevo_mensaje', {
                         id: msg.key.id || Date.now().toString(),
-                        remitente: remitente.replace('@s.whatsapp.net', '').replace('@lid', ''),
+                        remitente: jidLimpio.replace('@s.whatsapp.net', ''),
                         texto: textoEntrante,
                         tipo: 'recibido',
                         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -207,7 +208,8 @@ async function iniciarBaileys() {
                 }
 
                 if (configActual.puenteActivo && configActual.sistemaEncendido) {
-                    await procesarRespuestaIA(remitente, textoEntrante);
+                    // LLAMADA DIRECTA Y ASÍNCRONA EN EL SERVIDOR NODE.JS
+                    procesarRespuestaIA(jidLimpio, textoEntrante);
                 }
             } catch (e) {
                 console.error("Error en messages.upsert:", e);
@@ -218,25 +220,20 @@ async function iniciarBaileys() {
         console.error('❌ Error fatal al iniciar Baileys:', err.message);
     }
 }
-function obtenerJIDValido(msg) {
-    if (!msg || !msg.key) return null;
-    let jid = msg.key.remoteJid || "";
-    
-    if (msg.key.participant) {
-        jid = msg.key.participant;
+// =========================================================
+// 1. NORMALIZACIÓN DE JID DE WHATSAPP (@lid a @s.whatsapp.net)
+// =========================================================
+function normalizarJID(remitente) {
+    if (!remitente) return "";
+    let jid = remitente.trim();
+    if (jid.includes('@lid')) {
+        jid = jid.replace('@lid', '@s.whatsapp.net');
     }
-    
-    if (jid.endsWith('@lid')) {
-        if (msg.key.remoteJidAlt && msg.key.remoteJidAlt.endsWith('@s.whatsapp.net')) {
-            jid = msg.key.remoteJidAlt;
-        }
-    }
-    
     return jid;
 }
 
 // =========================================================
-// 2. CONSULTA HTTPS COMPATIBLE CON GEMINI 2.5 FLASH REST
+// 2. CONSULTA HTTPS DIRECTA Y COMPATIBLE CON GEMINI 2.5 FLASH REST (v1beta)
 // =========================================================
 async function consultarGeminiHTTPS(promptUsuario, historial = []) {
     if (!configActual.sistemaEncendido) return null;
@@ -246,15 +243,25 @@ async function consultarGeminiHTTPS(promptUsuario, historial = []) {
         : "AIzaSyC6m1vQDrODxPWX_tsIpHsEBR32garG2V4";
 
     if (!apiKey) {
-        console.error("❌ Error: No hay API Key configurada.");
+        console.error("❌ Error: No hay API Key configurada en el servidor.");
         return null;
     }
 
     const instrucciones = configActual.instruccionesUniversales || "Eres un Agente Virtual atento y servicial.";
     const modelo = "gemini-2.5-flash";
 
-    const contentsPayload = [];
-    
+    // INSERTAR INSTRUCCIONES DEL SISTEMA COMO LOS DOS PRIMEROS TURNOS EN CONTENTS
+    const contentsPayload = [
+        { 
+            role: 'user', 
+            parts: [{ text: "INSTRUCCIONES DEL SISTEMA: " + instrucciones }] 
+        },
+        { 
+            role: 'model', 
+            parts: [{ text: "Entendido, actuaré bajo estas instrucciones." }] 
+        }
+    ];
+
     if (Array.isArray(historial) && historial.length > 0) {
         historial.forEach(item => {
             const role = item.role === 'model' ? 'model' : 'user';
@@ -274,9 +281,6 @@ async function consultarGeminiHTTPS(promptUsuario, historial = []) {
     });
 
     const postData = JSON.stringify({
-        system_instruction: {
-            parts: [{ text: instrucciones }]
-        },
         contents: contentsPayload,
         generationConfig: {
             temperature: 0.7,
