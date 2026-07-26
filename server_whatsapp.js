@@ -1,6 +1,8 @@
 /**
  * ==============================================================================
- * AGENTE UNIVERSAL ENGINE - SERVIDOR WHATSAPP & GEMINI IA (RECONSTRUCCIÓN LIMPIA)
+ * AGENTE UNIVERSAL ENGINE - SERVIDOR WHATSAPP & GEMINI IA (SDK @google/genai)
+ * ==============================================================================
+ * Stack: Node.js, Express, Socket.io, @whiskeysockets/baileys, @google/genai
  * ==============================================================================
  */
 
@@ -10,9 +12,9 @@ const { Server } = require('socket.io');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
-const https = require('https');
 const QRCode = require('qrcode');
 const pino = require('pino');
+const { GoogleGenAI } = require('@google/genai');
 
 const baileys = require('@whiskeysockets/baileys');
 const makeWASocket = baileys.default || baileys.makeWASocket || baileys;
@@ -34,13 +36,13 @@ const PORT = process.env.PORT || 3001;
 const CONFIG_PATH = path.join(__dirname, 'config.json');
 const AUTH_FOLDER = path.join(__dirname, 'sesion_whatsapp_auth');
 
-// 2. CARGA Y GUARDADO DE CONFIGURACIÓN
+// 2. CONFIGURACIÓN POR DEFECTO UNIVERSAL
 const DEFAULT_CONFIG = {
-    apiKey: "AIzaSyC3kCmKY9Kjgm0XOa-gD-ITtZCBZhvh3oA",
-    instruccionesUniversales: "Eres un Agente Virtual de Atención al Cliente inteligente, amable, servicial y profesional.\n\nInstrucciones del Negocio:\n- Atiende siempre con respeto y claridad.\n- Responde las dudas del cliente de forma fluida y directa en 2 a 3 renglones.",
+    apiKey: "",
+    instruccionesUniversales: "Eres el mejor Vendedor del mundo, experto en neuroventas y atención al cliente. Te llamas \"AL\". Responde siempre de forma corta, amable y directa en 2 a 3 renglones.",
     puenteActivo: true,
     sistemaEncendido: true,
-    modeloGemini: "gemini-2.0-flash"
+    modeloGemini: "gemini-2.5-flash"
 };
 
 function cargarConfig() {
@@ -75,7 +77,7 @@ let qrActualBase64 = null;
 let estadoConexion = 'desconectado';
 let dynamicHistorialChat = {};
 
-// 4. SANITIZACIÓN DE JID (CONVIERTE @lid EN @s.whatsapp.net)
+// 4. SANITIZACIÓN DE JID DE WHATSAPP (@lid a @s.whatsapp.net)
 function normalizarJID(jidRaw) {
     if (!jidRaw) return "";
     let jid = jidRaw.trim();
@@ -85,108 +87,54 @@ function normalizarJID(jidRaw) {
     return jid;
 }
 
-// 5. MOTOR DE CONSULTA DIRECTA A GEMINI REST API
-async function consultarGeminiHTTPS(promptCliente, historial = []) {
+// 5. MOTOR DE CONSULTA DIRECTA A GEMINI USANDO EL SDK OFICIAL @google/genai (gemini-2.5-flash)
+async function consultarGeminiSDK(promptCliente) {
     if (!configActual.sistemaEncendido) return null;
 
-    const apiKey = (configActual.apiKey && !configActual.apiKey.includes('••••'))
+    const apiKey = (configActual.apiKey && !configActual.apiKey.includes('••••') && configActual.apiKey.trim().length > 0)
         ? configActual.apiKey.trim()
-        : "AIzaSyC3kCmKY9Kjgm0XOa-gD-ITtZCBZhvh3oA";
+        : (process.env.GEMINI_API_KEY || "");
 
     if (!apiKey) {
-        console.error("❌ No hay API Key configurada.");
+        console.error("❌ Error: No hay API Key de Gemini configurada. Ingresa tu clave en el Módulo 1.");
         return null;
     }
 
-    const instrucciones = configActual.instruccionesUniversales || "Eres un Agente Virtual atento y servicial.";
-    const modeloUnico = "gemini-2.5-flash";
-
-    // Construir historial limpio con alternancia estricta
-    const contents = [];
-    if (Array.isArray(historial) && historial.length > 0) {
-        let lastRole = null;
-        historial.forEach(item => {
-            const role = item.role === 'model' ? 'model' : 'user';
-            const text = (item.texto || item.text || "").trim();
-            if (text && role !== lastRole) {
-                contents.push({ role, parts: [{ text }] });
-                lastRole = role;
+    try {
+        const ai = new GoogleGenAI({ apiKey });
+        const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: promptCliente,
+            config: {
+                systemInstruction: configActual.instruccionesUniversales || "Eres un Agente Virtual atento y servicial."
             }
         });
+
+        const textoRespuesta = response.text;
+        if (textoRespuesta && textoRespuesta.trim()) {
+            return textoRespuesta.trim();
+        }
+    } catch (error) {
+        console.error("❌ Error en SDK @google/genai (gemini-2.5-flash):", error.message || error);
     }
 
-    if (contents.length > 0 && contents[contents.length - 1].role === 'user') {
-        contents[contents.length - 1].parts[0].text += "\n" + promptCliente.trim();
-    } else {
-        contents.push({ role: 'user', parts: [{ text: promptCliente.trim() }] });
-    }
-
-    const payloadObj = {
-        system_instruction: { parts: [{ text: instrucciones }] },
-        contents: contents,
-        generationConfig: { temperature: 0.7, maxOutputTokens: 800 }
-    };
-
-    const payloadJSON = JSON.stringify(payloadObj);
-
-    return new Promise((resolve) => {
-        const options = {
-            hostname: 'generativelanguage.googleapis.com',
-            port: 443,
-            path: `/v1beta/models/${modeloUnico}:generateContent?key=${apiKey}`,
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Content-Length': Buffer.byteLength(payloadJSON)
-            }
-        };
-
-        const req = https.request(options, (res) => {
-            let body = '';
-            res.on('data', chunk => body += chunk);
-            res.on('end', () => {
-                if (res.statusCode === 200) {
-                    try {
-                        const json = JSON.parse(body);
-                        const text = json.candidates?.[0]?.content?.parts?.[0]?.text;
-                        if (text && text.trim()) return resolve(text.trim());
-                    } catch (e) {}
-                }
-                console.error(`⚠️ Gemini API (${modeloUnico}) HTTP ${res.statusCode}: ${body.substring(0, 150)}`);
-                resolve(null);
-            });
-        });
-
-        req.on('error', (e) => resolve(null));
-        req.write(payloadJSON);
-        req.end();
-    });
+    return null;
 }
 
-// 6. PROCESADOR DE RESPUESTA DE IA Y ENVÍO POR WHATSAPP
+// 6. PROCESADOR DE RESPUESTA DE IA Y ENVÍO A WHATSAPP
 async function procesarRespuestaIA(jidCliente, textoCliente) {
     try {
         if (!jidCliente || !textoCliente) return;
 
-        if (!dynamicHistorialChat[jidCliente]) {
-            dynamicHistorialChat[jidCliente] = [];
-        }
-
-        console.log(`🧠 Procesando mensaje de [${jidCliente}] con Gemini IA...`);
-        const respuestaIA = await consultarGeminiHTTPS(textoCliente, dynamicHistorialChat[jidCliente]);
+        console.log(`🧠 Consultando @google/genai SDK (gemini-2.5-flash) para [${jidCliente}]...`);
+        const respuestaIA = await consultarGeminiSDK(textoCliente);
 
         if (respuestaIA && sock) {
-            dynamicHistorialChat[jidCliente].push({ role: 'user', texto: textoCliente });
-            dynamicHistorialChat[jidCliente].push({ role: 'model', texto: respuestaIA });
-
-            if (dynamicHistorialChat[jidCliente].length > 10) {
-                dynamicHistorialChat[jidCliente] = dynamicHistorialChat[jidCliente].slice(-10);
-            }
-
             await sock.sendMessage(jidCliente, { text: respuestaIA });
             console.log(`🤖 [RESPUESTA IA ENVIADA A ${jidCliente}]: ${respuestaIA}`);
 
             if (io) {
+                io.emit('activity_log', { user: '🤖 IA', msg: respuestaIA, type: 'outgoing', ai: respuestaIA });
                 io.emit('nuevo_mensaje', {
                     id: Date.now().toString(),
                     remitente: jidCliente.replace('@s.whatsapp.net', '').replace('@lid', ''),
@@ -196,25 +144,26 @@ async function procesarRespuestaIA(jidCliente, textoCliente) {
                 });
             }
         } else {
-            console.warn(`⚠️ Gemini no devolvió respuesta para [${jidCliente}].`);
+            console.warn(`⚠️ No se pudo enviar mensaje a [${jidCliente}]. Gemini devolvió vacío o falta API Key válida.`);
         }
     } catch (err) {
-        console.error("❌ Error en procesarRespuestaIA:", err.message);
+        console.error("❌ Error crítico en procesarRespuestaIA:", err.message);
     }
 }
 
-// 7. ARRANQUE DE BAILEYS (WHATSAPP)
+// 7. INICIALIZACIÓN Y EVENTOS DE BAILEYS WHATSAPP
 async function iniciarBaileys() {
     if (!configActual.sistemaEncendido) {
+        console.log('🔴 Sistema configurado en APAGADO.');
         estadoConexion = 'apagado';
-        io.emit('whatsapp_status', { estado: 'apagado', mensaje: '🔴 SISTEMA APAGADO TOTALMENTE' });
+        io.emit('whatsapp_status', 'disconnected');
         return;
     }
 
     try {
         console.log('🔄 Iniciando motor de Baileys WhatsApp...');
         estadoConexion = 'conectando';
-        io.emit('whatsapp_status', { estado: 'conectando', mensaje: 'Iniciando WhatsApp...' });
+        io.emit('whatsapp_status', 'connecting');
 
         const { state, saveCreds } = await useMultiFileAuthState(AUTH_FOLDER);
         let version;
@@ -230,7 +179,7 @@ async function iniciarBaileys() {
             auth: state,
             printQRInTerminal: false,
             logger: pino({ level: 'silent' }),
-            browser: ['Ubuntu', 'Chrome', '20.0.04'],
+            browser: ['Agente Universal Engine', 'Chrome', '1.0.0'],
             syncFullHistory: false,
             markOnlineOnConnect: false,
             connectTimeoutMs: 30000
@@ -246,7 +195,7 @@ async function iniciarBaileys() {
                 try {
                     qrActualBase64 = await QRCode.toDataURL(qr);
                     io.emit('whatsapp_qr', qrActualBase64);
-                    io.emit('whatsapp_status', { estado: 'esperando_qr', mensaje: 'Escanea el Código QR en vivo' });
+                    io.emit('whatsapp_status', 'qr');
                 } catch (e) {}
             }
 
@@ -257,34 +206,33 @@ async function iniciarBaileys() {
 
                 qrActualBase64 = null;
                 io.emit('whatsapp_qr', null);
+                io.emit('whatsapp_status', 'disconnected');
 
                 if (isLoggedOut) {
                     estadoConexion = 'desconectado';
                     if (fs.existsSync(AUTH_FOLDER)) {
                         try { fs.rmSync(AUTH_FOLDER, { recursive: true, force: true }); } catch(e){}
                     }
-                    io.emit('whatsapp_status', { estado: 'desconectado', mensaje: 'Desvinculado desde el celular. Generando nuevo QR...' });
                     if (configActual.sistemaEncendido) setTimeout(() => iniciarBaileys(), 2000);
                 } else if (configActual.sistemaEncendido) {
                     estadoConexion = 'conectando';
-                    io.emit('whatsapp_status', { estado: 'conectando', mensaje: 'Reconectando con WhatsApp...' });
                     setTimeout(() => iniciarBaileys(), 3000);
                 }
             } else if (connection === 'open') {
-                console.log('🟢 Conexión a WhatsApp establecida con éxito.');
+                console.log('🟢 WhatsApp Conectado con éxito!');
                 estadoConexion = 'conectado';
                 qrActualBase64 = null;
                 io.emit('whatsapp_qr', null);
-                io.emit('whatsapp_status', { estado: 'conectado', mensaje: '🟢 WHATSAPP CONECTADO Y OPERATIVO' });
+                io.emit('whatsapp_status', 'connected');
             }
         });
 
-        // ESCUCHA Y PROCESAMIENTO DE TODOS LOS MENSAJES ENTRANTES
-        sock.ev.on('messages.upsert', async (m) => {
+        // RECEPTOR Y MONITOR DE MENSAJES ENTRANTES
+        sock.ev.on('messages.upsert', async ({ messages }) => {
             try {
-                if (!m.messages || m.messages.length === 0) return;
+                if (!messages || messages.length === 0) return;
 
-                for (const msg of m.messages) {
+                for (const msg of messages) {
                     if (!msg || msg.key.fromMe) continue;
 
                     const remitenteRaw = msg.key.remoteJid || "";
@@ -297,9 +245,10 @@ async function iniciarBaileys() {
 
                     if (!textoEntrante.trim()) continue;
 
-                    console.log(`💬 [WHATSAPP RECIBIDO]: ${textoEntrante} (JID: ${jidLimpio})`);
+                    console.log(`💬 Mensaje recibido de ${jidLimpio}: ${textoEntrante}`);
 
                     if (io) {
+                        io.emit('activity_log', { user: jidLimpio.split('@')[0], msg: textoEntrante, type: 'incoming' });
                         io.emit('nuevo_mensaje', {
                             id: msg.key.id || Date.now().toString(),
                             remitente: jidLimpio.replace('@s.whatsapp.net', ''),
@@ -309,7 +258,9 @@ async function iniciarBaileys() {
                         });
                     }
 
+                    // COMPROBACIÓN DEL BOTÓN DE ACTIVACIÓN (MÓDULO 3 / PUENTE ACTIVO)
                     if (configActual.puenteActivo && configActual.sistemaEncendido) {
+                        io.emit('procesar_con_ia', { texto: textoEntrante, remitente: jidLimpio });
                         await procesarRespuestaIA(jidLimpio, textoEntrante);
                     }
                 }
@@ -323,17 +274,49 @@ async function iniciarBaileys() {
     }
 }
 
-// 8. ENDPOINTS API REST
+// 8. COMUNICACIÓN DE SOCKET.IO Y FRONTEND
+io.on('connection', (socket) => {
+    console.log(`💻 Frontend Conectado vía Socket.io. ID: ${socket.id}`);
+
+    socket.emit('sistema_status', { encendido: configActual.sistemaEncendido });
+    socket.emit('whatsapp_status', estadoConexion === 'conectado' ? 'connected' : estadoConexion);
+
+    if (qrActualBase64 && configActual.sistemaEncendido) {
+        socket.emit('whatsapp_qr', qrActualBase64);
+    }
+
+    socket.on('enviar_respuesta_whatsapp', async ({ respuesta, remitente }) => {
+        if (sock && remitente && respuesta) {
+            try {
+                const jidLimpio = normalizarJID(remitente);
+                await sock.sendMessage(jidLimpio, { text: respuesta });
+                io.emit('activity_log', { user: '🤖 IA', msg: respuesta, type: 'outgoing', ai: respuesta });
+            } catch (err) {
+                console.error("Error al enviar mensaje a WhatsApp desde socket:", err);
+            }
+        }
+    });
+});
+
+// 9. ENDPOINTS REST API
 app.get('/api/config', (req, res) => {
     res.json({
         ...configActual,
         apiKey: configActual.apiKey || '',
-        hasKeySet: (configActual.apiKey || '').trim().length > 0,
+        instrucciones: configActual.instruccionesUniversales,
+        puente: configActual.puenteActivo,
         success: true,
         estadoConexion,
-        tieneQR: !!qrActualBase64,
-        instruccionesUniversales: configActual.instruccionesUniversales
+        tieneQR: !!qrActualBase64
     });
+});
+
+app.post('/api/config', (req, res) => {
+    if (req.body.instrucciones !== undefined) configActual.instruccionesUniversales = req.body.instrucciones;
+    if (req.body.puente !== undefined) configActual.puenteActivo = req.body.puente;
+    guardarConfig(configActual);
+    console.log("Configuración actualizada:", { puenteActivo: configActual.puenteActivo, instrucciones: configActual.instruccionesUniversales });
+    res.json({ status: 'ok', success: true });
 });
 
 app.post('/api/save-key', (req, res) => {
@@ -341,8 +324,8 @@ app.post('/api/save-key', (req, res) => {
     if (apiKey !== undefined && apiKey.trim() !== '') {
         configActual.apiKey = apiKey.trim();
         guardarConfig(configActual);
-        console.log("🔑 Nueva API Key guardada.");
-        return res.json({ success: true, message: "API Key de Gemini guardada." });
+        console.log("🔑 Nueva API Key de Gemini guardada en disco.");
+        return res.json({ success: true, message: "API Key de Gemini guardada en disco." });
     }
     res.json({ success: true, message: "API Key mantenida." });
 });
@@ -352,10 +335,18 @@ app.post('/api/save-instructions', (req, res) => {
     if (instruccionesUniversales !== undefined) {
         configActual.instruccionesUniversales = instruccionesUniversales;
         guardarConfig(configActual);
-        console.log("📝 Instrucciones Universales guardadas.");
-        return res.json({ success: true, message: "Instrucciones guardadas." });
+        console.log("📝 Instrucciones Universales actualizadas.");
+        return res.json({ success: true, message: "Instrucciones del Agente guardadas correctamente." });
     }
     res.status(400).json({ success: false, message: "Instrucciones requeridas." });
+});
+
+app.get('/api/start', (_req, res) => {
+    console.log("Iniciando conexión de WhatsApp...");
+    configActual.sistemaEncendido = true;
+    guardarConfig(configActual);
+    iniciarBaileys();
+    res.json({ status: 'iniciando' });
 });
 
 app.post('/api/generar-qr-nuevo', async (req, res) => {
@@ -372,7 +363,7 @@ app.post('/api/generar-qr-nuevo', async (req, res) => {
         try { fs.rmSync(AUTH_FOLDER, { recursive: true, force: true }); } catch(e){}
     }
     io.emit('whatsapp_qr', null);
-    io.emit('whatsapp_status', { estado: 'conectando', mensaje: 'Generando nuevo Código QR...' });
+    io.emit('whatsapp_status', 'connecting');
     configActual.sistemaEncendido = true;
     guardarConfig(configActual);
     setTimeout(() => iniciarBaileys(), 1500);
@@ -393,7 +384,7 @@ app.post('/api/desvincular', async (req, res) => {
         try { fs.rmSync(AUTH_FOLDER, { recursive: true, force: true }); } catch(e){}
     }
     io.emit('whatsapp_qr', null);
-    io.emit('whatsapp_status', { estado: 'desconectado', mensaje: 'WhatsApp Desvinculado Totalmente' });
+    io.emit('whatsapp_status', 'disconnected');
     res.json({ success: true, message: 'WhatsApp desvinculado.' });
 });
 
@@ -410,7 +401,7 @@ app.post('/api/apagar-total', (req, res) => {
         sock = null;
     }
     io.emit('whatsapp_qr', null);
-    io.emit('whatsapp_status', { estado: 'apagado', mensaje: '🔴 SISTEMA APAGADO TOTALMENTE' });
+    io.emit('whatsapp_status', 'disconnected');
     res.json({ success: true, encendido: false });
 });
 
@@ -419,16 +410,6 @@ app.post('/api/encender-total', (req, res) => {
     guardarConfig(configActual);
     iniciarBaileys();
     res.json({ success: true, encendido: true });
-});
-
-// 9. EVENTOS SOCKET.IO
-io.on('connection', (socket) => {
-    console.log(`💻 Cliente Web Conectado. ID: ${socket.id}`);
-    socket.emit('sistema_status', { encendido: configActual.sistemaEncendido });
-    socket.emit('whatsapp_status', { estado: estadoConexion });
-    if (qrActualBase64 && configActual.sistemaEncendido) {
-        socket.emit('whatsapp_qr', qrActualBase64);
-    }
 });
 
 // 10. ARRANQUE DEL SERVIDOR
