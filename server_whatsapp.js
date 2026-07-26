@@ -291,36 +291,39 @@ async function iniciarBaileys() {
             }
         });
 
-        // ESCUCHA DE MENSAJES ENTRANTES
+        // ESCUCHA Y PROCESAMIENTO DE TODOS LOS MENSAJES ENTRANTES
         sock.ev.on('messages.upsert', async (m) => {
             try {
-                const msg = m.messages[0];
-                if (!msg || msg.key.fromMe) return;
+                if (!m.messages || m.messages.length === 0) return;
 
-                const remitenteRaw = msg.key.remoteJid || "";
-                const jidLimpio = normalizarJID(remitenteRaw);
-                if (!jidLimpio) return;
+                for (const msg of m.messages) {
+                    if (!msg || msg.key.fromMe) continue;
 
-                const textoEntrante = msg.message?.conversation ||
-                                     msg.message?.extendedTextMessage?.text ||
-                                     msg.message?.imageMessage?.caption || "";
+                    const remitenteRaw = msg.key.remoteJid || "";
+                    const jidLimpio = normalizarJID(remitenteRaw);
+                    if (!jidLimpio) continue;
 
-                if (!textoEntrante.trim()) return;
+                    const textoEntrante = msg.message?.conversation ||
+                                         msg.message?.extendedTextMessage?.text ||
+                                         msg.message?.imageMessage?.caption || "";
 
-                console.log(`💬 [WHATSAPP RECIBIDO]: ${textoEntrante} (JID: ${jidLimpio})`);
+                    if (!textoEntrante.trim()) continue;
 
-                if (io) {
-                    io.emit('nuevo_mensaje', {
-                        id: msg.key.id || Date.now().toString(),
-                        remitente: jidLimpio.replace('@s.whatsapp.net', ''),
-                        texto: textoEntrante,
-                        tipo: 'recibido',
-                        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                    });
-                }
+                    console.log(`💬 [WHATSAPP RECIBIDO]: ${textoEntrante} (JID: ${jidLimpio})`);
 
-                if (configActual.puenteActivo && configActual.sistemaEncendido) {
-                    procesarRespuestaIA(jidLimpio, textoEntrante);
+                    if (io) {
+                        io.emit('nuevo_mensaje', {
+                            id: msg.key.id || Date.now().toString(),
+                            remitente: jidLimpio.replace('@s.whatsapp.net', ''),
+                            texto: textoEntrante,
+                            tipo: 'recibido',
+                            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                        });
+                    }
+
+                    if (configActual.puenteActivo && configActual.sistemaEncendido) {
+                        await procesarRespuestaIA(jidLimpio, textoEntrante);
+                    }
                 }
             } catch (e) {
                 console.error("Error en messages.upsert:", e);
