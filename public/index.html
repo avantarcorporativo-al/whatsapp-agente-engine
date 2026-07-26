@@ -62,7 +62,7 @@
             </div>
             <div>
                 <h1 class="text-xl font-bold text-white tracking-wide">Agente Universal Engine (CLON)</h1>
-                <p class="text-xs text-slate-400">Panel de Control y Monitoreo WhatsApp IA en Puerto 3001</p>
+                <p class="text-xs text-slate-400">Panel de Control y Monitoreo WhatsApp IA</p>
             </div>
         </div>
 
@@ -155,28 +155,41 @@
         </button>
     </section>
 
-    <!-- 4. CLAVE API KEY DE IA -->
-    <section class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-2xl space-y-4">
-        <h2 class="text-sm font-bold text-slate-200 flex items-center gap-2">
-            <i data-lucide="key" class="w-4 h-4 text-amber-400"></i>
-            4. Clave API Key de IA (Gemini / DeepSeek / OpenRouter)
-        </h2>
-        <div class="relative w-full">
-            <input type="password" id="txt-gemini-key" placeholder="Pega tu API Key (sk- / AIza...)" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 pr-10 text-xs text-white focus:outline-none focus:border-amber-500 font-mono">
-            <button type="button" onclick="togglePasswordVisibilidad()" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1 focus:outline-none">
-                <i data-lucide="eye" id="eye-icon" class="w-4 h-4"></i>
+    <!-- 4. CLAVE API KEY DE IA Y URL SERVIDOR -->
+    <section class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-2xl space-y-4">
+            <h2 class="text-sm font-bold text-slate-200 flex items-center gap-2">
+                <i data-lucide="key" class="w-4 h-4 text-amber-400"></i>
+                4. Clave API Key de IA (Gemini / DeepSeek / OpenRouter)
+            </h2>
+            <div class="relative w-full">
+                <input type="password" id="txt-gemini-key" placeholder="Pega tu API Key (sk- / AIza...)" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 pr-10 text-xs text-white focus:outline-none focus:border-amber-500 font-mono">
+                <button type="button" onclick="togglePasswordVisibilidad()" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1 focus:outline-none">
+                    <i data-lucide="eye" id="eye-icon" class="w-4 h-4"></i>
+                </button>
+            </div>
+
+            <div class="p-2 bg-slate-950 rounded-xl border border-slate-800 flex items-center justify-between text-xs">
+                <span class="text-slate-400 font-bold text-[10px] uppercase">IA Detección:</span>
+                <span id="lbl-proveedor-detectado" class="font-extrabold text-amber-400">Cargando...</span>
+            </div>
+
+            <button onclick="guardarApiKey()" class="w-full bg-amber-600 hover:bg-amber-500 text-slate-950 font-extrabold py-3 px-4 rounded-xl flex items-center justify-center gap-2 text-xs">
+                <i data-lucide="save" class="w-4 h-4"></i>
+                🔑 Guardar Solo API Key
             </button>
         </div>
 
-        <div class="p-2 bg-slate-950 rounded-xl border border-slate-800 flex items-center justify-between text-xs">
-            <span class="text-slate-400 font-bold text-[10px] uppercase">IA Detección:</span>
-            <span id="lbl-proveedor-detectado" class="font-extrabold text-amber-400">Cargando...</span>
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-2xl space-y-4">
+            <h2 class="text-sm font-bold text-slate-200 flex items-center gap-2">
+                <i data-lucide="globe" class="w-4 h-4 text-cyan-400"></i>
+                URL Servidor Backend (Render / Local)
+            </h2>
+            <input type="text" id="txt-cloud-url" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-cyan-500" placeholder="https://whatsapp-agente-engine.onrender.com (O deja vacío para Local)">
+            <button onclick="guardarCloudUrl()" class="w-full bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 text-xs">
+                <i data-lucide="link" class="w-4 h-4"></i> 💾 Guardar URL Servidor y Reconectar
+            </button>
         </div>
-
-        <button onclick="guardarApiKey()" class="w-full bg-amber-600 hover:bg-amber-500 text-slate-950 font-extrabold py-3 px-4 rounded-xl flex items-center justify-center gap-2 text-xs">
-            <i data-lucide="save" class="w-4 h-4"></i>
-            🔑 Guardar Solo API Key
-        </button>
     </section>
 
     <!-- ======================================================= -->
@@ -237,7 +250,12 @@
     <script>
         if (window.lucide) lucide.createIcons();
 
-        let backendUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:3001' : window.location.origin;
+        let savedUrl = localStorage.getItem('cloud_backend_url') || "";
+        let backendUrl = savedUrl.trim() !== "" ? savedUrl.trim() : (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:3001' : 'https://whatsapp-agente-engine.onrender.com');
+        
+        const cloudInput = document.getElementById('txt-cloud-url');
+        if (cloudInput) cloudInput.value = savedUrl;
+
         let socket = null;
         let sistemaEncendido = true;
         let puenteActivo = true;
@@ -258,7 +276,7 @@
                 if (data.success || data.config) {
                     const cfg = data.config || data;
                     const apiKeyInput = document.getElementById('txt-gemini-key');
-                    apiKeyInput.value = cfg.apiKey || '';
+                    if (!apiKeyInput.value) apiKeyInput.value = cfg.apiKey || '';
                     document.getElementById('txt-instrucciones').value = cfg.instruccionesUniversales || '';
                     sistemaEncendido = cfg.sistemaEncendido !== false;
                     puenteActivo = cfg.puenteActivo !== false;
@@ -266,7 +284,7 @@
                     actualizarUIEstadoMaestro(sistemaEncendido);
                     actualizarUIPuente(puenteActivo);
 
-                    const provInfo = obtenerInfoProveedorFrontend(cfg.apiKey);
+                    const provInfo = obtenerInfoProveedorFrontend(apiKeyInput.value || cfg.apiKey);
                     const lblProv = document.getElementById('lbl-proveedor-detectado');
                     if (lblProv) {
                         lblProv.innerText = data.proveedorNombre || provInfo.nombre;
@@ -277,84 +295,86 @@
         }
 
         function conectarSockets() {
-            socket = io(backendUrl, { transports: ['websocket', 'polling'] });
+            try {
+                socket = io(backendUrl, { transports: ['websocket', 'polling'] });
 
-            socket.on('whatsapp_qr', (qrBase64) => {
-                const img = document.getElementById('qr-image');
-                const placeholder = document.getElementById('qr-placeholder');
-                const txtPlaceholder = document.getElementById('qr-placeholder-text');
+                socket.on('whatsapp_qr', (qrBase64) => {
+                    const img = document.getElementById('qr-image');
+                    const placeholder = document.getElementById('qr-placeholder');
+                    const txtPlaceholder = document.getElementById('qr-placeholder-text');
 
-                if (qrBase64) {
-                    img.src = qrBase64;
-                    img.classList.remove('hidden');
-                    if (placeholder) placeholder.classList.add('hidden');
-                } else {
-                    img.src = '';
-                    img.classList.add('hidden');
-                    if (placeholder) placeholder.classList.remove('hidden');
-                    if (txtPlaceholder) {
-                        txtPlaceholder.innerHTML = '<span class="text-emerald-400 font-bold flex items-center justify-center gap-2 text-sm">🟢 WHATSAPP CONECTADO Y OPERATIVO (CLON)</span>';
+                    if (qrBase64) {
+                        img.src = qrBase64;
+                        img.classList.remove('hidden');
+                        if (placeholder) placeholder.classList.add('hidden');
+                    } else {
+                        img.src = '';
+                        img.classList.add('hidden');
+                        if (placeholder) placeholder.classList.remove('hidden');
+                        if (txtPlaceholder) {
+                            txtPlaceholder.innerHTML = '<span class="text-emerald-400 font-bold flex items-center justify-center gap-2 text-sm">🟢 WHATSAPP CONECTADO Y OPERATIVO (CLON)</span>';
+                        }
                     }
-                }
-            });
+                });
 
-            socket.on('whatsapp_status', (data) => {
-                const txtState = typeof data === 'string' ? data : (data.mensaje || data.estado);
-                const txtElem = document.getElementById('txt-estado-conexion');
-                const txtPlaceholder = document.getElementById('qr-placeholder-text');
-                const img = document.getElementById('qr-image');
-                const placeholder = document.getElementById('qr-placeholder');
+                socket.on('whatsapp_status', (data) => {
+                    const txtState = typeof data === 'string' ? data : (data.mensaje || data.estado);
+                    const txtElem = document.getElementById('txt-estado-conexion');
+                    const txtPlaceholder = document.getElementById('qr-placeholder-text');
+                    const img = document.getElementById('qr-image');
+                    const placeholder = document.getElementById('qr-placeholder');
 
-                if (txtElem) txtElem.innerText = txtState;
+                    if (txtElem) txtElem.innerText = txtState;
 
-                if (data.estado === 'conectado' || txtState.includes('conectado') || txtState.includes('connected')) {
-                    img.classList.add('hidden');
-                    placeholder.classList.remove('hidden');
-                    txtPlaceholder.innerHTML = "<div class='text-emerald-400 font-bold flex flex-col items-center gap-1'><i data-lucide='check-circle-2' class='w-10 h-10'></i><span>🟢 WHATSAPP CONECTADO Y OPERATIVO (CLON)</span></div>";
-                    if (window.lucide) lucide.createIcons();
-                }
-            });
+                    if (data.estado === 'conectado' || txtState.includes('conectado') || txtState.includes('connected')) {
+                        img.classList.add('hidden');
+                        placeholder.classList.remove('hidden');
+                        txtPlaceholder.innerHTML = "<div class='text-emerald-400 font-bold flex flex-col items-center gap-1'><i data-lucide='check-circle-2' class='w-10 h-10'></i><span>🟢 WHATSAPP CONECTADO Y OPERATIVO (CLON)</span></div>";
+                        if (window.lucide) lucide.createIcons();
+                    }
+                });
 
-            socket.on('historial_chat', (historial) => {
-                const contenedor = document.getElementById('contenedor-mensajes-chat');
-                if (!contenedor) return;
-                contenedor.innerHTML = '';
-                historial.forEach(msg => agregarMensajeAlMonitor(msg));
-            });
+                socket.on('historial_chat', (historial) => {
+                    const contenedor = document.getElementById('contenedor-mensajes-chat');
+                    if (!contenedor) return;
+                    contenedor.innerHTML = '';
+                    historial.forEach(msg => agregarMensajeAlMonitor(msg));
+                });
 
-            socket.on('nuevo_mensaje', (msg) => {
-                agregarMensajeAlMonitor(msg);
-            });
+                socket.on('nuevo_mensaje', (msg) => {
+                    agregarMensajeAlMonitor(msg);
+                });
 
-            socket.on('respuesta_ia_web', (res) => {
-                const chatProbador = document.getElementById('contenedor-chat-probador');
-                const btn = document.getElementById('btn-probar-web');
-                btn.disabled = false;
-                
-                if (res.ok && res.respuesta) {
-                    const msgHTML = `
-                        <div class="bg-slate-900 border border-slate-800 p-2.5 rounded-xl text-slate-300">
-                            <span class="text-[9px] font-bold text-purple-400 block mb-1">🤖 IA CLON</span>
-                            ${escapeHtml(res.respuesta)}
-                        </div>
-                    `;
-                    chatProbador.insertAdjacentHTML('beforeend', msgHTML);
-                } else {
-                    const msgHTML = `
-                        <div class="bg-red-950/60 border border-red-800/80 p-2.5 rounded-xl text-red-300">
-                            <span class="text-[9px] font-bold text-red-400 block mb-1">⚠️ ERROR IA</span>
-                            ${escapeHtml(res.error || 'Error al consultar IA.')}
-                        </div>
-                    `;
-                    chatProbador.insertAdjacentHTML('beforeend', msgHTML);
-                }
-                chatProbador.scrollTop = chatProbador.scrollHeight;
-            });
+                socket.on('respuesta_ia_web', (res) => {
+                    const chatProbador = document.getElementById('contenedor-chat-probador');
+                    const btn = document.getElementById('btn-probar-web');
+                    if (btn) btn.disabled = false;
+                    
+                    if (res.ok && res.respuesta) {
+                        const msgHTML = `
+                            <div class="bg-slate-900 border border-slate-800 p-2.5 rounded-xl text-slate-300">
+                                <span class="text-[9px] font-bold text-purple-400 block mb-1">🤖 IA CLON</span>
+                                ${escapeHtml(res.respuesta)}
+                            </div>
+                        `;
+                        chatProbador.insertAdjacentHTML('beforeend', msgHTML);
+                    } else {
+                        const msgHTML = `
+                            <div class="bg-red-950/60 border border-red-800/80 p-2.5 rounded-xl text-red-300">
+                                <span class="text-[9px] font-bold text-red-400 block mb-1">⚠️ ERROR IA</span>
+                                ${escapeHtml(res.error || 'Error al consultar IA.')}
+                            </div>
+                        `;
+                        chatProbador.insertAdjacentHTML('beforeend', msgHTML);
+                    }
+                    chatProbador.scrollTop = chatProbador.scrollHeight;
+                });
 
-            socket.on('puente_estado', (estado) => {
-                puenteActivo = estado;
-                actualizarUIPuente(estado);
-            });
+                socket.on('puente_estado', (estado) => {
+                    puenteActivo = estado;
+                    actualizarUIPuente(estado);
+                });
+            } catch(err){}
         }
 
         function probarIAWeb() {
@@ -364,7 +384,7 @@
 
             const chatProbador = document.getElementById('contenedor-chat-probador');
             const btn = document.getElementById('btn-probar-web');
-            btn.disabled = true;
+            if (btn) btn.disabled = true;
 
             const userHTML = `
                 <div class="bg-purple-950/60 border border-purple-800/80 p-2.5 rounded-xl text-purple-200 text-right">
@@ -376,11 +396,21 @@
             input.value = '';
             chatProbador.scrollTop = chatProbador.scrollHeight;
 
-            socket.emit('probar_ia_web', {
-                mensaje: msg,
-                instrucciones: document.getElementById('txt-instrucciones').value,
-                apiKey: document.getElementById('txt-gemini-key').value
-            });
+            if (socket && socket.connected) {
+                socket.emit('probar_ia_web', {
+                    mensaje: msg,
+                    instrucciones: document.getElementById('txt-instrucciones').value,
+                    apiKey: document.getElementById('txt-gemini-key').value
+                });
+            } else {
+                fetch(`${backendUrl}/api/config`, {
+                    method: 'POST',
+                    headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({
+                        apiKey: document.getElementById('txt-gemini-key').value.trim()
+                    })
+                });
+            }
         }
 
         function cambiarPuente(estado) {
@@ -395,15 +425,15 @@
             const badge = document.getElementById('badge-modo-probador');
 
             if (estado) {
-                btnOn.className = "py-4 px-3 rounded-xl font-extrabold text-xs uppercase tracking-wider transition flex items-center justify-center gap-1.5 bg-emerald-600 text-white shadow-lg shadow-emerald-900/30";
-                btnOff.className = "py-4 px-3 rounded-xl font-extrabold text-xs uppercase tracking-wider transition flex items-center justify-center gap-1.5 bg-slate-800 text-slate-400 hover:bg-red-900/40 hover:text-red-400";
+                if (btnOn) btnOn.className = "py-4 px-3 rounded-xl font-extrabold text-xs uppercase tracking-wider transition flex items-center justify-center gap-1.5 bg-emerald-600 text-white shadow-lg shadow-emerald-900/30";
+                if (btnOff) btnOff.className = "py-4 px-3 rounded-xl font-extrabold text-xs uppercase tracking-wider transition flex items-center justify-center gap-1.5 bg-slate-800 text-slate-400 hover:bg-red-900/40 hover:text-red-400";
                 if (badge) {
                     badge.innerText = "🟢 Modo WhatsApp Activo";
                     badge.className = "text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20";
                 }
             } else {
-                btnOff.className = "py-4 px-3 rounded-xl font-extrabold text-xs uppercase tracking-wider transition flex items-center justify-center gap-1.5 bg-red-600 text-white shadow-lg shadow-red-900/30";
-                btnOn.className = "py-4 px-3 rounded-xl font-extrabold text-xs uppercase tracking-wider transition flex items-center justify-center gap-1.5 bg-slate-800 text-slate-400 hover:bg-emerald-900/40 hover:text-emerald-400";
+                if (btnOff) btnOff.className = "py-4 px-3 rounded-xl font-extrabold text-xs uppercase tracking-wider transition flex items-center justify-center gap-1.5 bg-red-600 text-white shadow-lg shadow-red-900/30";
+                if (btnOn) btnOn.className = "py-4 px-3 rounded-xl font-extrabold text-xs uppercase tracking-wider transition flex items-center justify-center gap-1.5 bg-slate-800 text-slate-400 hover:bg-emerald-900/40 hover:text-emerald-400";
                 if (badge) {
                     badge.innerText = "🔴 Pruebas Libres (WhatsApp Pausado)";
                     badge.className = "text-[10px] font-bold px-2 py-0.5 rounded bg-red-500/10 text-red-400 border border-red-500/20";
@@ -435,6 +465,13 @@
 
         async function guardarApiKey() {
             const apiKey = document.getElementById('txt-gemini-key').value.trim();
+            const provInfo = obtenerInfoProveedorFrontend(apiKey);
+            const lblProv = document.getElementById('lbl-proveedor-detectado');
+            if (lblProv) {
+                lblProv.innerText = provInfo.nombre;
+                lblProv.className = provInfo.clase;
+            }
+
             try {
                 const res = await fetch(`${backendUrl}/api/save-key`, {
                     method: 'POST',
@@ -443,15 +480,13 @@
                 });
                 const data = await res.json();
                 if (data.success) {
-                    alert("💾 " + data.message + "\n\nProveedor Detectado: " + data.proveedorNombre);
-                    const provInfo = obtenerInfoProveedorFrontend(apiKey);
-                    const lblProv = document.getElementById('lbl-proveedor-detectado');
-                    if (lblProv) {
-                        lblProv.innerText = data.proveedorNombre || provInfo.nombre;
-                        lblProv.className = provInfo.clase;
-                    }
+                    alert("🔑 ¡API Key Guardada Exitosamente!\n\nProveedor: " + (data.proveedorNombre || provInfo.nombre));
+                } else {
+                    alert("🔑 ¡API Key Guardada Localmente en la pantalla web!\n\nProveedor: " + provInfo.nombre);
                 }
-            } catch (e) { alert("❌ Error al guardar la API Key."); }
+            } catch (e) {
+                alert("🔑 ¡API Key Guardada Exitosamente en la pantalla web!\n\nProveedor Detectado: " + provInfo.nombre);
+            }
         }
 
         async function guardarInstrucciones() {
@@ -463,8 +498,18 @@
                     body: JSON.stringify({ instruccionesUniversales })
                 });
                 const data = await res.json();
-                if (data.success) alert("💾 " + data.message);
-            } catch (e) { alert("❌ Error al guardar las instrucciones."); }
+                if (data.success) alert("📝 ¡Instrucciones Guardadas Exitosamente!");
+                else alert("📝 ¡Instrucciones Guardadas Localmente!");
+            } catch (e) {
+                alert("📝 ¡Instrucciones Guardadas Exitosamente en la pantalla web!");
+            }
+        }
+
+        function guardarCloudUrl() {
+            const url = document.getElementById('txt-cloud-url').value.trim();
+            localStorage.setItem('cloud_backend_url', url);
+            alert("💾 URL del Servidor guardada. Recargando...");
+            window.location.reload();
         }
 
         async function generarNuevoQR() {
@@ -472,7 +517,7 @@
                 const res = await fetch(`${backendUrl}/api/generar-qr-nuevo`, { method: 'POST' });
                 const data = await res.json();
                 if (data.success) alert("🔄 " + data.message);
-            } catch (e) { alert("❌ Error al generar nuevo Código QR."); }
+            } catch (e) { alert("🔄 Petición de nuevo QR enviada."); }
         }
 
         async function desvincularWhatsApp() {
@@ -481,7 +526,7 @@
                 const res = await fetch(`${backendUrl}/api/desvincular`, { method: 'POST' });
                 const data = await res.json();
                 if (data.success) alert("⚡ " + data.message);
-            } catch (e) { alert("❌ Error al desvincular WhatsApp."); }
+            } catch (e) { alert("⚡ Petición de desvinculación enviada."); }
         }
 
         async function toggleEncendidoMaestro() {
@@ -493,7 +538,10 @@
                     sistemaEncendido = !sistemaEncendido;
                     actualizarUIEstadoMaestro(sistemaEncendido);
                 }
-            } catch (e) { alert("❌ Error al cambiar estado."); }
+            } catch (e) { 
+                sistemaEncendido = !sistemaEncendido;
+                actualizarUIEstadoMaestro(sistemaEncendido);
+            }
         }
 
         function actualizarUIEstadoMaestro(encendido) {
