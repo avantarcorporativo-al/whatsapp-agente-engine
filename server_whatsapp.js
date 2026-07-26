@@ -240,7 +240,7 @@ async function consultarGeminiHTTPS(promptUsuario, historial = []) {
     
     const apiKey = (configActual.apiKey && !configActual.apiKey.includes('••••')) 
         ? configActual.apiKey.trim() 
-        : "AIzaSyC6m1vQDrODxPWX_tsIpHsEBR32garG2V4";
+        : "AIzaSyC3kCmKY9Kjgm0XOa-gD-ITtZCBZhvh3oA";
 
     if (!apiKey) {
         console.error("❌ Error: No hay API Key configurada en el servidor.");
