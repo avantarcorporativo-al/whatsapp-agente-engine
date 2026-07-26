@@ -272,8 +272,14 @@ async function consultarGeminiHTTPS(promptUsuario, historial = []) {
         ? configActual.instruccionesUniversales.trim()
         : "Eres un Agente Virtual de Atención al Cliente atento, profesional y servicial. Responde siempre de forma amigable y concisa.";
 
-    // Modelos activos validos en Google AI Studio (v1beta)
-    const modelos = ["gemini-2.0-flash", "gemini-1.5-flash-latest", "gemini-2.0-flash-lite-preview-02-05"];
+    // Lista inteligente de fallback de modelos en Google AI Studio (v1beta)
+    const modelos = [
+        "gemini-2.5-flash", 
+        "gemini-2.0-flash", 
+        "gemini-2.5-flash-lite", 
+        "gemini-2.0-flash-lite", 
+        "gemini-flash-lite-latest"
+    ];
     let tuvoErrorCuota = false;
     let tuvoErrorKeyRevocada = false;
 
@@ -398,16 +404,12 @@ function hacerPeticionGeminiLibre(modelo, apiKey, systemInstruction, promptUsuar
 // 6. ENDPOINTS REST API DE EXPRESS
 app.get('/api/config', (req, res) => {
     const rawKey = configActual.apiKey || '';
-    const maskedKey = rawKey.length > 8 ? rawKey.substring(0, 6) + '••••••••••••' : '••••••••••••••••';
     res.json({
         ...configActual,
-        apiKey: maskedKey,
+        apiKey: rawKey,
         hasKeySet: rawKey.trim().length > 0,
         success: true,
-        config: {
-            ...configActual,
-            apiKey: maskedKey
-        },
+        config: configActual,
         estadoConexion,
         tieneQR: !!qrActualBase64,
         instruccionesUniversales: configActual.instruccionesUniversales
@@ -416,10 +418,10 @@ app.get('/api/config', (req, res) => {
 
 app.post('/api/save-key', (req, res) => {
     const { apiKey } = req.body;
-    if (apiKey !== undefined && apiKey.trim() !== '' && !apiKey.includes('••••')) {
+    if (apiKey !== undefined && apiKey.trim() !== '') {
         configActual.apiKey = apiKey.trim();
         guardarConfig(configActual);
-        console.log("🔑 Nueva API Key de Gemini guardada de forma segura en disco.");
+        console.log("🔑 Nueva API Key de Gemini guardada de forma segura en disco:", configActual.apiKey.substring(0, 6) + "...");
         return res.json({ success: true, message: "API Key de Gemini guardada en disco." });
     }
     res.json({ success: true, message: "API Key mantenida sin cambios." });

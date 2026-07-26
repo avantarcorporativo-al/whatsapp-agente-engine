@@ -70,7 +70,7 @@
             </div>
             <div>
                 <h1 class="text-xl font-bold text-white tracking-wide">Agente Universal Engine</h1>
-                <p class="text-xs text-slate-400">Panel de Control y Monitoreo WhatsApp IA (VERSIÓN CLOUD)</p>
+                <p class="text-xs text-slate-400">Panel de Control y Monitoreo WhatsApp IA (VERSIÓN CLON)</p>
             </div>
         </div>
 
@@ -95,7 +95,7 @@
         </div>
     </header>
 
-    <!-- MODAL DE ADVERTENCIA DE INACTIVIDAD (15 MINUTOS) -->
+    <!-- MODAL DE ADVERTENCIA DE INACTIVIDAD (30 MINUTOS) -->
     <div id="inactivity-warning-modal" class="hidden fixed inset-0 z-[100001] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
         <div class="bg-slate-900 border border-amber-500/40 rounded-2xl p-6 w-80 shadow-2xl space-y-4 text-center">
             <div class="w-12 h-12 bg-amber-500/10 border border-amber-500/30 rounded-full flex items-center justify-center mx-auto text-amber-400 text-xl">
@@ -238,7 +238,12 @@
                 <i data-lucide="key" class="w-4 h-4 text-amber-400"></i>
                 4. Módulo 1: Clave API Key de Gemini IA
             </h2>
-            <input type="password" id="txt-gemini-key" placeholder="•••••••••••••••• (Clave Protegida)" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-amber-500">
+            <div class="relative w-full">
+                <input type="password" id="txt-gemini-key" placeholder="Pega tu API Key de Gemini (AIzaSy...)" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 pr-10 text-xs text-white focus:outline-none focus:border-amber-500">
+                <button type="button" onclick="togglePasswordVisibilidad()" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1 focus:outline-none">
+                    <i data-lucide="eye" id="eye-icon" class="w-4 h-4"></i>
+                </button>
+            </div>
             <button onclick="guardarApiKey()" class="w-full bg-amber-600 hover:bg-amber-500 text-slate-950 font-extrabold py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 text-xs">
                 <i data-lucide="save" class="w-4 h-4"></i>
                 💾 Guardar Clave API Key
@@ -465,6 +470,11 @@
             }
         }
 
+        function togglePasswordVisibilidad() {
+            const input = document.getElementById('txt-gemini-key');
+            if (input) input.type = input.type === 'password' ? 'text' : 'password';
+        }
+
         function guardarCloudUrl() {
             const url = document.getElementById('txt-cloud-url').value.trim();
             localStorage.setItem('cloud_backend_url', url);
@@ -617,6 +627,20 @@
             const warningModal = document.getElementById("inactivity-warning-modal");
             if (warningModal) warningModal.classList.add("hidden");
             iniciarTemporizadorInactividad();
+        }
+
+        function togglePasswordVisibilidad() {
+            const input = document.getElementById('txt-gemini-key');
+            const eyeIcon = document.getElementById('eye-icon');
+            if (!input) return;
+            if (input.type === 'password') {
+                input.type = 'text';
+                if (eyeIcon) eyeIcon.setAttribute('data-lucide', 'eye-off');
+            } else {
+                input.type = 'password';
+                if (eyeIcon) eyeIcon.setAttribute('data-lucide', 'eye');
+            }
+            if (window.lucide) lucide.createIcons();
         }
 
         document.addEventListener('DOMContentLoaded', () => {
