@@ -1,10 +1,12 @@
 /**
  * ==============================================================================
- * AGENTE UNIVERSAL ENGINE - SERVIDOR WHATSAPP & GEMINI IA (SDK @google/genai)
+ * AGENTE UNIVERSAL ENGINE - SERVIDOR WHATSAPP & MULTI-IA CON MEMORIA AMPLIADA (50 MSGS)
  * ==============================================================================
- * Stack: Node.js, Express, Socket.io, @whiskeysockets/baileys, @google/genai
+ * Stack: Node.js, Express, Socket.io, @whiskeysockets/baileys, DeepSeek, OpenRouter, Gemini
  * ==============================================================================
  */
+
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
 const express = require('express');
 const http = require('http');
@@ -12,15 +14,15 @@ const { Server } = require('socket.io');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
+const https = require('https');
 const QRCode = require('qrcode');
 const pino = require('pino');
-const { GoogleGenAI } = require('@google/genai');
 
 const baileys = require('@whiskeysockets/baileys');
 const makeWASocket = baileys.default || baileys.makeWASocket || baileys;
 const { useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } = baileys;
 
-// 1. CONFIGURACIÓN DEL SERVIDOR EXPRESS & SOCKET.IO
+// 1. CONFIGURACIÓN DEL SERVIDOR EXPRESS & SOCKET.IO (PUERTO 3001)
 const app = express();
 app.use(cors({ origin: '*' }));
 app.use(express.json({ limit: '10mb' }));
@@ -38,11 +40,11 @@ const AUTH_FOLDER = path.join(__dirname, 'sesion_whatsapp_auth');
 
 // 2. CONFIGURACIÓN POR DEFECTO UNIVERSAL
 const DEFAULT_CONFIG = {
-    apiKey: "",
-    instruccionesUniversales: "Eres el mejor Vendedor del mundo, experto en neuroventas y atención al cliente. Te llamas \"AL\". Responde siempre de forma corta, amable y directa en 2 a 3 renglones.",
+    apiKey: process.env.GEMINI_API_KEY || process.env.OPENROUTER_API_KEY || "",
+    instruccionesUniversales: "Eres el mejor Vendedor del mundo, experto en neuroventas y atención al cliente. Te llamas \"AL\". Responde siempre de forma corta, amable y directa en 2 a 3 renglones. Saluda solo en el primer mensaje.",
     puenteActivo: true,
     sistemaEncendido: true,
-    modeloGemini: "gemini-2.5-flash"
+    modeloGemini: "gemini-flash-latest"
 };
 
 function cargarConfig() {
@@ -60,7 +62,7 @@ function cargarConfig() {
     }
 }
 
-function guardarConfig(nuevaConfig) {
+function guardarConfigDisco(nuevaConfig) {
     try {
         fs.writeFileSync(CONFIG_PATH, JSON.stringify(nuevaConfig, null, 2), 'utf-8');
         return true;
@@ -71,97 +73,227 @@ function guardarConfig(nuevaConfig) {
 
 let configActual = cargarConfig();
 
-// 3. ESTADO GLOBAL EN MEMORIA
+// 3. ESTADO GLOBAL EN MEMORIA & MEMORIA AMPLIADA A 50 MENSAJES POR CLIENTE
 let sock = null;
 let qrActualBase64 = null;
 let estadoConexion = 'desconectado';
-let dynamicHistorialChat = {};
+let historialChat = [];
+let historialConversacionPorCliente = {};
 
-// 4. SANITIZACIÓN DE JID DE WHATSAPP (@lid a @s.whatsapp.net)
-function normalizarJID(jidRaw) {
-    if (!jidRaw) return "";
-    let jid = jidRaw.trim();
-    if (jid.includes('@lid')) {
-        jid = jid.replace('@lid', '@s.whatsapp.net');
-    }
-    return jid;
+function identificarProveedorClave(key) {
+    const k = (key || '').trim();
+    if (!k) return "NINGUNO (Clave Vacía)";
+    if (k.startsWith('sk-or-')) return "OpenRouter (DeepSeek R1 / V3)";
+    if (k.startsWith('sk-')) return "DeepSeek Oficial (platform.deepseek.com)";
+    if (k.startsWith('AIza')) return "Google Gemini (Google AI Studio)";
+    return "API OpenAI Compatible Genérica";
 }
 
-// 5. MOTOR DE CONSULTA DIRECTA A GEMINI USANDO EL SDK OFICIAL @google/genai (gemini-2.5-flash)
-async function consultarGeminiSDK(promptCliente) {
-    if (!configActual.sistemaEncendido) return null;
+function extraerTextoMensaje(m) {
+    if (!m || !m.message) return null;
+    const msg = m.message.ephemeralMessage?.message || m.message;
+    return msg.conversation || 
+           msg.extendedTextMessage?.text || 
+           msg.imageMessage?.caption || 
+           msg.videoMessage?.caption || 
+           msg.buttonsResponseMessage?.selectedButtonId || 
+           null;
+}
 
-    const apiKey = (configActual.apiKey && !configActual.apiKey.includes('••••') && configActual.apiKey.trim().length > 0)
-        ? configActual.apiKey.trim()
-        : (process.env.GEMINI_API_KEY || "");
+// 4. MOTOR MULTI-IA UNIVERSAL CON MEMORIA DE DIÁLOGO EXTENDIDA
+function realizarPeticionOpenAICompatible(endpointUrl, apiKey, modelName, systemPrompt, userMessage, conversationHistory = []) {
+    return new Promise((resolve, reject) => {
+        const messages = [
+            { role: 'system', content: systemPrompt },
+            ...conversationHistory,
+            { role: 'user', content: userMessage }
+        ];
 
-    if (!apiKey) {
-        console.error("❌ Error: No hay API Key de Gemini configurada. Ingresa tu clave en el Módulo 1.");
-        return null;
-    }
+        const payloadObj = {
+            model: modelName,
+            messages: messages,
+            stream: false
+        };
 
-    try {
-        const ai = new GoogleGenAI({ apiKey });
-        const response = await ai.models.generateContent({
-            model: "gemini-2.5-flash",
-            contents: promptCliente,
-            config: {
-                systemInstruction: configActual.instruccionesUniversales || "Eres un Agente Virtual atento y servicial."
+        const payload = JSON.stringify(payloadObj);
+        const urlParsed = new URL(endpointUrl);
+
+        const options = {
+            hostname: urlParsed.hostname,
+            path: urlParsed.pathname + urlParsed.search,
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey.trim()}`,
+                'Content-Length': Buffer.byteLength(payload)
             }
+        };
+
+        const req = https.request(options, (res) => {
+            let body = '';
+            res.on('data', chunk => body += chunk);
+            res.on('end', () => {
+                try {
+                    const json = JSON.parse(body);
+                    const reply = json.choices?.[0]?.message?.content;
+                    if (reply) {
+                        resolve(reply);
+                    } else {
+                        const errMsg = json.error?.message || `HTTP ${res.statusCode}: ${body.substring(0, 150)}`;
+                        reject(new Error(errMsg));
+                    }
+                } catch (e) {
+                    reject(new Error(`Respuesta de API inválida (Status ${res.statusCode})`));
+                }
+            });
         });
 
-        const textoRespuesta = response.text;
-        if (textoRespuesta && textoRespuesta.trim()) {
-            return textoRespuesta.trim();
-        }
-    } catch (error) {
-        console.error("❌ Error en SDK @google/genai (gemini-2.5-flash):", error.message || error);
-    }
-
-    return null;
+        req.on('error', (e) => reject(e));
+        req.write(payload);
+        req.end();
+    });
 }
 
-// 6. PROCESADOR DE RESPUESTA DE IA Y ENVÍO A WHATSAPP
-async function procesarRespuestaIA(jidCliente, textoCliente) {
-    try {
-        if (!jidCliente || !textoCliente) return;
+function realizarPeticionGeminiHTTP(modelName, systemPrompt, userMessage, apiKey, conversationHistory = []) {
+    return new Promise((resolve, reject) => {
+        const contents = [];
+        for (const h of conversationHistory) {
+            contents.push({
+                role: h.role === 'assistant' ? 'model' : 'user',
+                parts: [{ text: h.content }]
+            });
+        }
+        contents.push({
+            role: 'user',
+            parts: [{ text: userMessage }]
+        });
 
-        console.log(`🧠 Consultando @google/genai SDK (gemini-2.5-flash) para [${jidCliente}]...`);
-        const respuestaIA = await consultarGeminiSDK(textoCliente);
+        const payloadObj = {
+            systemInstruction: {
+                parts: [{ text: systemPrompt }]
+            },
+            contents: contents
+        };
 
-        if (respuestaIA && sock) {
-            await sock.sendMessage(jidCliente, { text: respuestaIA });
-            console.log(`🤖 [RESPUESTA IA ENVIADA A ${jidCliente}]: ${respuestaIA}`);
+        const payload = JSON.stringify(payloadObj);
 
-            if (io) {
-                io.emit('activity_log', { user: '🤖 IA', msg: respuestaIA, type: 'outgoing', ai: respuestaIA });
-                io.emit('nuevo_mensaje', {
-                    id: Date.now().toString(),
-                    remitente: jidCliente.replace('@s.whatsapp.net', '').replace('@lid', ''),
-                    texto: respuestaIA,
-                    tipo: 'enviado',
-                    timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                });
+        const options = {
+            hostname: 'generativelanguage.googleapis.com',
+            path: `/v1beta/models/${modelName}:generateContent?key=${encodeURIComponent(apiKey)}`,
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Content-Length': Buffer.byteLength(payload)
             }
-        } else {
-            console.warn(`⚠️ No se pudo enviar mensaje a [${jidCliente}]. Gemini devolvió vacío o falta API Key válida.`);
-        }
-    } catch (err) {
-        console.error("❌ Error crítico en procesarRespuestaIA:", err.message);
-    }
+        };
+
+        const req = https.request(options, (res) => {
+            let body = '';
+            res.on('data', chunk => body += chunk);
+            res.on('end', () => {
+                try {
+                    const json = JSON.parse(body);
+                    const reply = json.candidates?.[0]?.content?.parts?.[0]?.text;
+                    if (reply) {
+                        resolve(reply);
+                    } else {
+                        const msgErr = json.error?.message || `HTTP Status ${res.statusCode}`;
+                        reject(new Error(msgErr));
+                    }
+                } catch (e) {
+                    reject(e);
+                }
+            });
+        });
+
+        req.on('error', (e) => reject(e));
+        req.write(payload);
+        req.end();
+    });
 }
 
-// 7. INICIALIZACIÓN Y EVENTOS DE BAILEYS WHATSAPP
-async function iniciarBaileys() {
+async function consultarIAUniversal(userMessage, systemPromptReq, apiKeyReq, conversationHistory = []) {
+    const keyLimpia = (apiKeyReq || configActual.apiKey || process.env.GEMINI_API_KEY || process.env.OPENROUTER_API_KEY || '').trim();
+    const sistema = systemPromptReq || configActual.instruccionesUniversales || "Eres un Agente Virtual atento y servicial.";
+
+    if (!keyLimpia) {
+        throw new Error("No hay API Key configurada. Ingresa tu clave en el panel.");
+    }
+
+    const provNombre = identificarProveedorClave(keyLimpia);
+    console.log(`🧠 [CLON] Consultando IA [${provNombre}] (Historial: ${conversationHistory.length} msgs)...`);
+
+    // A. OPENROUTER (sk-or-)
+    if (keyLimpia.startsWith('sk-or-')) {
+        const modelosOR = ["deepseek/deepseek-chat", "deepseek/deepseek-r1", "google/gemini-2.0-flash-exp:free"];
+        let errores = [];
+        for (const m of modelosOR) {
+            try {
+                const reply = await realizarPeticionOpenAICompatible("https://openrouter.ai/api/v1/chat/completions", keyLimpia, m, sistema, userMessage, conversationHistory);
+                if (reply) return reply;
+            } catch(e) { errores.push(e.message); }
+        }
+        throw new Error(`OpenRouter Error: ${errores[0] || 'Clave de OpenRouter inválida'}`);
+    }
+
+    // B. DEEPSEEK OFICIAL (sk-)
+    if (keyLimpia.startsWith('sk-')) {
+        try {
+            const reply = await realizarPeticionOpenAICompatible("https://api.deepseek.com/v1/chat/completions", keyLimpia, "deepseek-chat", sistema, userMessage, conversationHistory);
+            if (reply) return reply;
+        } catch(e) {
+            throw new Error(`DeepSeek API: ${e.message}`);
+        }
+    }
+
+    // C. GOOGLE GEMINI (AIza)
+    const modelosGemini = ["gemini-flash-latest", "gemini-flash-lite-latest", "gemini-2.0-flash"];
+    let ultimoError = "";
+    for (const m of modelosGemini) {
+        try {
+            const reply = await realizarPeticionGeminiHTTP(m, sistema, userMessage, keyLimpia, conversationHistory);
+            if (reply) return reply;
+        } catch(e) { 
+            ultimoError = e.message;
+            if (ultimoError.includes("Quota exceeded") || ultimoError.includes("quota")) {
+                throw new Error(`Cuota de Google Gemini Agotada en esta clave AIza. Por favor usa tu clave de OpenRouter (sk-or-...).`);
+            }
+        }
+    }
+
+    throw new Error(`Error en Gemini API: ${ultimoError || "Verifica tu API Key"}`);
+}
+
+// 5. INICIALIZACIÓN DE BAILEYS WHATSAPP
+async function iniciarBaileys(forceReset = false) {
     if (!configActual.sistemaEncendido) {
-        console.log('🔴 Sistema configurado en APAGADO.');
+        console.log('🔴 [CLON] Sistema configurado en APAGADO.');
         estadoConexion = 'apagado';
         io.emit('whatsapp_status', 'disconnected');
         return;
     }
 
+    if (forceReset) {
+        qrActualBase64 = null;
+        if (sock) {
+            try { sock.end(undefined); } catch(e){}
+            sock = null;
+        }
+        if (fs.existsSync(AUTH_FOLDER)) {
+            try {
+                fs.rmSync(AUTH_FOLDER, { recursive: true, force: true });
+                console.log("🧹 [CLON] Carpetas de sesión limpiadas.");
+            } catch(e){}
+        }
+    } else if (sock) {
+        if (qrActualBase64 && estadoConexion !== 'conectado') {
+            io.emit('whatsapp_qr', qrActualBase64);
+        }
+        return;
+    }
+
     try {
-        console.log('🔄 Iniciando motor de Baileys WhatsApp...');
+        console.log('🔄 [CLON] Iniciando motor de Baileys WhatsApp en Puerto 3001...');
         estadoConexion = 'conectando';
         io.emit('whatsapp_status', 'connecting');
 
@@ -178,11 +310,8 @@ async function iniciarBaileys() {
             version,
             auth: state,
             printQRInTerminal: false,
-            logger: pino({ level: 'silent' }),
-            browser: ['Agente Universal Engine', 'Chrome', '1.0.0'],
-            syncFullHistory: false,
-            markOnlineOnConnect: false,
-            connectTimeoutMs: 30000
+            logger: pino({ level: 'fatal' }),
+            browser: ["Agente Universal Engine (CLON)", "Chrome", "1.0.0"]
         });
 
         sock.ev.on('creds.update', saveCreds);
@@ -191,232 +320,188 @@ async function iniciarBaileys() {
             const { connection, lastDisconnect, qr } = update;
 
             if (qr) {
-                console.log('📸 Nuevo Código QR generado.');
                 try {
                     qrActualBase64 = await QRCode.toDataURL(qr);
+                    estadoConexion = 'qr';
                     io.emit('whatsapp_qr', qrActualBase64);
                     io.emit('whatsapp_status', 'qr');
                 } catch (e) {}
             }
 
+            if (connection === 'connecting') {
+                estadoConexion = 'conectando';
+                io.emit('whatsapp_status', 'connecting');
+            }
+
             if (connection === 'close') {
-                const statusCode = lastDisconnect?.error?.output?.statusCode;
-                const isLoggedOut = statusCode === DisconnectReason.loggedOut || statusCode === 401;
-                console.log(`⚠️ Conexión cerrada. Código: ${statusCode}. Desvinculado: ${isLoggedOut}`);
+                const reason = lastDisconnect?.error?.output?.statusCode;
+                console.log(`🔌 [CLON] Conexión cerrada. Código HTTP: ${reason}`);
+                sock = null;
 
-                qrActualBase64 = null;
-                io.emit('whatsapp_qr', null);
-                io.emit('whatsapp_status', 'disconnected');
-
-                if (isLoggedOut) {
+                if (reason === DisconnectReason.loggedOut || reason === 401) {
                     estadoConexion = 'desconectado';
-                    if (fs.existsSync(AUTH_FOLDER)) {
-                        try { fs.rmSync(AUTH_FOLDER, { recursive: true, force: true }); } catch(e){}
-                    }
-                    if (configActual.sistemaEncendido) setTimeout(() => iniciarBaileys(), 2000);
-                } else if (configActual.sistemaEncendido) {
+                    io.emit('whatsapp_status', 'disconnected');
+                    iniciarBaileys(true);
+                } else {
                     estadoConexion = 'conectando';
-                    setTimeout(() => iniciarBaileys(), 3000);
+                    io.emit('whatsapp_status', 'connecting');
+                    setTimeout(() => iniciarBaileys(false), 1500);
                 }
             } else if (connection === 'open') {
-                console.log('🟢 WhatsApp Conectado con éxito!');
-                estadoConexion = 'conectado';
+                console.log("✅ [CLON] ¡WHATSAPP CONECTADO EXITOSAMENTE A META!");
                 qrActualBase64 = null;
-                io.emit('whatsapp_qr', null);
-                io.emit('whatsapp_status', 'connected');
+                estadoConexion = 'conectado';
+                io.emit('whatsapp_status', 'conectado');
+                io.emit('whatsapp_qr', '');
             }
         });
 
-        // RECEPTOR Y MONITOR DE MENSAJES ENTRANTES
         sock.ev.on('messages.upsert', async ({ messages }) => {
-            try {
-                if (!messages || messages.length === 0) return;
+            for (const m of messages) {
+                if (!m.message || m.key.fromMe) continue;
+                const textoCliente = extraerTextoMensaje(m);
+                const remitente = m.key.remoteJid;
 
-                for (const msg of messages) {
-                    if (!msg || msg.key.fromMe) continue;
+                if (textoCliente && remitente) {
+                    const nombre = m.pushName || remitente.split('@')[0];
+                    console.log(`💬 [CLON] Mensaje de ${nombre}: "${textoCliente}"`);
 
-                    const remitenteRaw = msg.key.remoteJid || "";
-                    const jidLimpio = normalizarJID(remitenteRaw);
-                    if (!jidLimpio) continue;
+                    const itemRecibido = {
+                        id: Date.now().toString(),
+                        remitente: nombre,
+                        texto: textoCliente,
+                        tipo: 'recibido',
+                        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                    };
+                    historialChat.unshift(itemRecibido);
+                    if (historialChat.length > 50) historialChat.pop();
+                    io.emit('nuevo_mensaje', itemRecibido);
 
-                    const textoEntrante = msg.message?.conversation ||
-                                         msg.message?.extendedTextMessage?.text ||
-                                         msg.message?.imageMessage?.caption || "";
-
-                    if (!textoEntrante.trim()) continue;
-
-                    console.log(`💬 Mensaje recibido de ${jidLimpio}: ${textoEntrante}`);
-
-                    if (io) {
-                        io.emit('activity_log', { user: jidLimpio.split('@')[0], msg: textoEntrante, type: 'incoming' });
-                        io.emit('nuevo_mensaje', {
-                            id: msg.key.id || Date.now().toString(),
-                            remitente: jidLimpio.replace('@s.whatsapp.net', ''),
-                            texto: textoEntrante,
-                            tipo: 'recibido',
-                            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                        });
-                    }
-
-                    // COMPROBACIÓN DEL BOTÓN DE ACTIVACIÓN (MÓDULO 3 / PUENTE ACTIVO)
                     if (configActual.puenteActivo && configActual.sistemaEncendido) {
-                        io.emit('procesar_con_ia', { texto: textoEntrante, remitente: jidLimpio });
-                        await procesarRespuestaIA(jidLimpio, textoEntrante);
+                        try {
+                            if (!historialConversacionPorCliente[remitente]) {
+                                historialConversacionPorCliente[remitente] = [];
+                            }
+                            const contextoCliente = historialConversacionPorCliente[remitente];
+
+                            const respuestaIA = await consultarIAUniversal(textoCliente, configActual.instruccionesUniversales, configActual.apiKey, contextoCliente);
+                            if (respuestaIA && sock) {
+                                await sock.sendMessage(remitente, { text: respuestaIA });
+
+                                historialConversacionPorCliente[remitente].push({ role: 'user', content: textoCliente });
+                                historialConversacionPorCliente[remitente].push({ role: 'assistant', content: respuestaIA });
+                                if (historialConversacionPorCliente[remitente].length > 50) {
+                                    historialConversacionPorCliente[remitente] = historialConversacionPorCliente[remitente].slice(-50);
+                                }
+
+                                const itemEnviado = {
+                                    id: (Date.now() + 1).toString(),
+                                    remitente: '🤖 IA Gemini (CLON)',
+                                    texto: respuestaIA,
+                                    tipo: 'enviado',
+                                    timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                                };
+                                historialChat.unshift(itemEnviado);
+                                io.emit('nuevo_mensaje', itemEnviado);
+                            }
+                        } catch (errIA) {
+                            console.error("❌ [CLON] Error procesando respuesta con IA:", errIA.message);
+                        }
+                    } else {
+                        console.log("⏸️ [CLON] IA en pausa para WhatsApp.");
                     }
                 }
-            } catch (e) {
-                console.error("Error en messages.upsert:", e);
             }
         });
 
-    } catch (err) {
-        console.error('❌ Error fatal al iniciar Baileys:', err.message);
+    } catch (e) {
+        console.error("❌ Error iniciando Baileys:", e);
     }
 }
 
-// 8. COMUNICACIÓN DE SOCKET.IO Y FRONTEND
-io.on('connection', (socket) => {
-    console.log(`💻 Frontend Conectado vía Socket.io. ID: ${socket.id}`);
-
-    socket.emit('sistema_status', { encendido: configActual.sistemaEncendido });
-    socket.emit('whatsapp_status', estadoConexion === 'conectado' ? 'connected' : estadoConexion);
-
-    if (qrActualBase64 && configActual.sistemaEncendido) {
-        socket.emit('whatsapp_qr', qrActualBase64);
-    }
-
-    socket.on('enviar_respuesta_whatsapp', async ({ respuesta, remitente }) => {
-        if (sock && remitente && respuesta) {
-            try {
-                const jidLimpio = normalizarJID(remitente);
-                await sock.sendMessage(jidLimpio, { text: respuesta });
-                io.emit('activity_log', { user: '🤖 IA', msg: respuesta, type: 'outgoing', ai: respuesta });
-            } catch (err) {
-                console.error("Error al enviar mensaje a WhatsApp desde socket:", err);
-            }
-        }
-    });
-});
-
-// 9. ENDPOINTS REST API
-app.get('/api/config', (req, res) => {
+// 6. RUTAS API HTTP
+app.get('/api/config', (_req, res) => {
     res.json({
-        ...configActual,
-        apiKey: configActual.apiKey || '',
-        instrucciones: configActual.instruccionesUniversales,
-        puente: configActual.puenteActivo,
         success: true,
-        estadoConexion,
-        tieneQR: !!qrActualBase64
+        config: configActual,
+        proveedorNombre: identificarProveedorClave(configActual.apiKey || process.env.GEMINI_API_KEY || process.env.OPENROUTER_API_KEY || "")
     });
-});
-
-app.post('/api/config', (req, res) => {
-    if (req.body.instrucciones !== undefined) configActual.instruccionesUniversales = req.body.instrucciones;
-    if (req.body.puente !== undefined) configActual.puenteActivo = req.body.puente;
-    guardarConfig(configActual);
-    console.log("Configuración actualizada:", { puenteActivo: configActual.puenteActivo, instrucciones: configActual.instruccionesUniversales });
-    res.json({ status: 'ok', success: true });
 });
 
 app.post('/api/save-key', (req, res) => {
     const { apiKey } = req.body;
-    if (apiKey !== undefined && apiKey.trim() !== '') {
+    if (typeof apiKey === 'string') {
         configActual.apiKey = apiKey.trim();
-        guardarConfig(configActual);
-        console.log("🔑 Nueva API Key de Gemini guardada en disco.");
-        return res.json({ success: true, message: "API Key de Gemini guardada en disco." });
+        guardarConfigDisco(configActual);
     }
-    res.json({ success: true, message: "API Key mantenida." });
+    res.json({ success: true, message: 'Clave API Key guardada exitosamente.', proveedorNombre: identificarProveedorClave(configActual.apiKey) });
 });
 
 app.post('/api/save-instructions', (req, res) => {
     const { instruccionesUniversales } = req.body;
-    if (instruccionesUniversales !== undefined) {
+    if (typeof instruccionesUniversales === 'string') {
         configActual.instruccionesUniversales = instruccionesUniversales;
-        guardarConfig(configActual);
-        console.log("📝 Instrucciones Universales actualizadas.");
-        return res.json({ success: true, message: "Instrucciones del Agente guardadas correctamente." });
+        guardarConfigDisco(configActual);
     }
-    res.status(400).json({ success: false, message: "Instrucciones requeridas." });
+    res.json({ success: true, message: 'Instrucciones guardadas exitosamente.' });
 });
 
-app.get('/api/start', (_req, res) => {
-    console.log("Iniciando conexión de WhatsApp...");
-    configActual.sistemaEncendido = true;
-    guardarConfig(configActual);
-    iniciarBaileys();
-    res.json({ status: 'iniciando' });
+app.post('/api/generar-qr-nuevo', (_req, res) => {
+    iniciarBaileys(true);
+    res.json({ success: true, message: 'Regenerando código QR...' });
 });
 
-app.post('/api/generar-qr-nuevo', async (req, res) => {
-    qrActualBase64 = null;
-    estadoConexion = 'conectando';
-    if (sock) {
-        try {
-            if (sock.ws) sock.ws.close();
-            if (sock.ev) sock.ev.removeAllListeners();
-            sock = null;
-        } catch (e) {}
-    }
-    if (fs.existsSync(AUTH_FOLDER)) {
-        try { fs.rmSync(AUTH_FOLDER, { recursive: true, force: true }); } catch(e){}
-    }
-    io.emit('whatsapp_qr', null);
-    io.emit('whatsapp_status', 'connecting');
-    configActual.sistemaEncendido = true;
-    guardarConfig(configActual);
-    setTimeout(() => iniciarBaileys(), 1500);
-    res.json({ success: true, message: 'Generando nuevo Código QR...' });
+app.post('/api/desvincular', (_req, res) => {
+    iniciarBaileys(true);
+    res.json({ success: true, message: 'Sesión desvinculada exitosamente.' });
 });
 
-app.post('/api/desvincular', async (req, res) => {
-    qrActualBase64 = null;
-    estadoConexion = 'desconectado';
-    if (sock) {
-        try {
-            if (sock.ws) sock.ws.close();
-            if (sock.ev) sock.ev.removeAllListeners();
-            sock = null;
-        } catch (e) {}
-    }
-    if (fs.existsSync(AUTH_FOLDER)) {
-        try { fs.rmSync(AUTH_FOLDER, { recursive: true, force: true }); } catch(e){}
-    }
-    io.emit('whatsapp_qr', null);
-    io.emit('whatsapp_status', 'disconnected');
-    res.json({ success: true, message: 'WhatsApp desvinculado.' });
-});
-
-app.post('/api/apagar-total', (req, res) => {
+app.post('/api/apagar-total', (_req, res) => {
     configActual.sistemaEncendido = false;
-    guardarConfig(configActual);
-    qrActualBase64 = null;
+    guardarConfigDisco(configActual);
+    if (sock) { try { sock.end(undefined); } catch(e){} sock = null; }
     estadoConexion = 'apagado';
-    if (sock) {
-        try {
-            if (sock.ws) sock.ws.close();
-            if (sock.ev) sock.ev.removeAllListeners();
-        } catch (err) {}
-        sock = null;
-    }
-    io.emit('whatsapp_qr', null);
     io.emit('whatsapp_status', 'disconnected');
-    res.json({ success: true, encendido: false });
+    res.json({ success: true, message: 'Sistema Apagado Totalmente.' });
 });
 
-app.post('/api/encender-total', (req, res) => {
+app.post('/api/encender-total', (_req, res) => {
     configActual.sistemaEncendido = true;
-    guardarConfig(configActual);
-    iniciarBaileys();
-    res.json({ success: true, encendido: true });
+    guardarConfigDisco(configActual);
+    iniciarBaileys(true);
+    res.json({ success: true, message: 'Sistema Encendido.' });
 });
 
-// 10. ARRANQUE DEL SERVIDOR
+// 7. WEBSOCKETS SOCKET.IO
+let historialProbadorWeb = [];
+io.on('connection', (socket) => {
+    socket.emit('whatsapp_status', estadoConexion);
+    if (qrActualBase64) socket.emit('whatsapp_qr', qrActualBase64);
+    socket.emit('historial_chat', historialChat);
+
+    socket.on('probar_ia_web', async ({ mensaje, instrucciones, apiKey }) => {
+        try {
+            const respuesta = await consultarIAUniversal(mensaje, instrucciones || configActual.instruccionesUniversales, apiKey || configActual.apiKey, historialProbadorWeb);
+            historialProbadorWeb.push({ role: 'user', content: mensaje });
+            historialProbadorWeb.push({ role: 'assistant', content: respuesta });
+            if (historialProbadorWeb.length > 50) historialProbadorWeb = historialProbadorWeb.slice(-50);
+            socket.emit('respuesta_ia_web', { ok: true, respuesta });
+        } catch(err) {
+            socket.emit('respuesta_ia_web', { ok: false, error: err.message });
+        }
+    });
+
+    socket.on('toggle_puente', (nuevoEstado) => {
+        configActual.puenteActivo = !!nuevoEstado;
+        guardarConfigDisco(configActual);
+        io.emit('puente_estado', configActual.puenteActivo);
+    });
+});
+
+// 8. ARRANCAR SERVIDOR HTTP
 server.listen(PORT, '0.0.0.0', () => {
-    console.log(`=============================================================`);
-    console.log(`🚀 AGENTE UNIVERSAL ENGINE CORRIENDO EN PUERTO: ${PORT}`);
-    console.log(`🌐 URL Local: http://localhost:${PORT}`);
-    console.log(`=============================================================`);
-    iniciarBaileys();
+    console.log(`=============================================================================`);
+    console.log(` 🚀 WHATSAPP PAGINA UNIVERSAL CLON CORRIENDO EN http://localhost:${PORT}`);
+    console.log(`=============================================================================`);
+    iniciarBaileys(false);
 });
