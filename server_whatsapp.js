@@ -99,13 +99,7 @@ async function consultarGeminiHTTPS(promptCliente, historial = []) {
     }
 
     const instrucciones = configActual.instruccionesUniversales || "Eres un Agente Virtual atento y servicial.";
-    const modelos = [
-        configActual.modeloGemini || "gemini-2.0-flash",
-        "gemini-2.0-flash-lite",
-        "gemini-2.5-flash-lite",
-        "gemini-flash-lite-latest"
-    ];
-    const modelosUnicos = [...new Set(modelos)];
+    const modeloUnico = "gemini-2.5-flash";
 
     // Construir historial limpio con alternancia estricta
     const contents = [];
@@ -135,44 +129,38 @@ async function consultarGeminiHTTPS(promptCliente, historial = []) {
 
     const payloadJSON = JSON.stringify(payloadObj);
 
-    for (const mod of modelosUnicos) {
-        const respuesta = await new Promise((resolve) => {
-            const options = {
-                hostname: 'generativelanguage.googleapis.com',
-                port: 443,
-                path: `/v1beta/models/${mod}:generateContent?key=${apiKey}`,
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Content-Length': Buffer.byteLength(payloadJSON)
+    return new Promise((resolve) => {
+        const options = {
+            hostname: 'generativelanguage.googleapis.com',
+            port: 443,
+            path: `/v1beta/models/${modeloUnico}:generateContent?key=${apiKey}`,
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Content-Length': Buffer.byteLength(payloadJSON)
+            }
+        };
+
+        const req = https.request(options, (res) => {
+            let body = '';
+            res.on('data', chunk => body += chunk);
+            res.on('end', () => {
+                if (res.statusCode === 200) {
+                    try {
+                        const json = JSON.parse(body);
+                        const text = json.candidates?.[0]?.content?.parts?.[0]?.text;
+                        if (text && text.trim()) return resolve(text.trim());
+                    } catch (e) {}
                 }
-            };
-
-            const req = https.request(options, (res) => {
-                let body = '';
-                res.on('data', chunk => body += chunk);
-                res.on('end', () => {
-                    if (res.statusCode === 200) {
-                        try {
-                            const json = JSON.parse(body);
-                            const text = json.candidates?.[0]?.content?.parts?.[0]?.text;
-                            if (text && text.trim()) return resolve(text.trim());
-                        } catch (e) {}
-                    }
-                    console.error(`⚠️ Gemini API (${mod}) HTTP ${res.statusCode}: ${body.substring(0, 150)}`);
-                    resolve(null);
-                });
+                console.error(`⚠️ Gemini API (${modeloUnico}) HTTP ${res.statusCode}: ${body.substring(0, 150)}`);
+                resolve(null);
             });
-
-            req.on('error', (e) => resolve(null));
-            req.write(payloadJSON);
-            req.end();
         });
 
-        if (respuesta) return respuesta;
-    }
-
-    return null;
+        req.on('error', (e) => resolve(null));
+        req.write(payloadJSON);
+        req.end();
+    });
 }
 
 // 6. PROCESADOR DE RESPUESTA DE IA Y ENVÍO POR WHATSAPP
