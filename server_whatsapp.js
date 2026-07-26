@@ -370,10 +370,11 @@ async function consultarGeminiHTTPS(promptUsuario, historial = []) {
             remitente: 'SISTEMA ALERTA API',
             texto: "🚨 Tu clave API Key de Gemini fue deshabilitada por Google (HTTP 403). Ingresa una clave limpia en el Módulo 1.",
             tipo: 'enviado',
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
         });
     }
 
-    return null;
+    return "¡Hola! Gracias por comunicarte. He recibido tu mensaje y estoy a tus órdenes para ayudarte en lo que necesites. 😊";
 }
 
 // 6. ENDPOINTS REST API DE EXPRESS
