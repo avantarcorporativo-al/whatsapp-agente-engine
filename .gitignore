@@ -3,3 +3,4 @@ node_modules/
 sesion_whatsapp_auth/
 .firebase/
 firebase-debug.log*
+config.json
