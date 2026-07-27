@@ -246,12 +246,13 @@
         </div>
     </section>
 
-    <!-- SCRIPT FRONTEND COMPLETO -->
+    <!-- SCRIPT FRONTEND COMPLETO CON CONEXIÓN REST PROXY A RENDER -->
     <script>
         if (window.lucide) lucide.createIcons();
 
+        const RENDER_BACKEND_URL = "https://whatsapp-agente-engine.onrender.com";
         let savedUrl = localStorage.getItem('cloud_backend_url') || "";
-        let backendUrl = savedUrl.trim() !== "" ? savedUrl.trim() : (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:3001' : 'https://whatsapp-agente-engine.onrender.com');
+        let backendUrl = savedUrl.trim() !== "" ? savedUrl.trim() : (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:3001' : RENDER_BACKEND_URL);
         
         const cloudInput = document.getElementById('txt-cloud-url');
         if (cloudInput) cloudInput.value = savedUrl;
@@ -377,7 +378,8 @@
             } catch(err){}
         }
 
-        function probarIAWeb() {
+        // PROBADOR DE IA WEB VÍA REST PROXY /api/probar-ia
+        async function probarIAWeb() {
             const input = document.getElementById('txt-mensaje-probador');
             const msg = input.value.trim();
             if (!msg) return;
@@ -396,20 +398,46 @@
             input.value = '';
             chatProbador.scrollTop = chatProbador.scrollHeight;
 
-            if (socket && socket.connected) {
-                socket.emit('probar_ia_web', {
-                    mensaje: msg,
-                    instrucciones: document.getElementById('txt-instrucciones').value,
-                    apiKey: document.getElementById('txt-gemini-key').value
-                });
-            } else {
-                fetch(`${backendUrl}/api/config`, {
+            try {
+                const targetServer = backendUrl || RENDER_BACKEND_URL;
+                const res = await fetch(`${targetServer}/api/probar-ia`, {
                     method: 'POST',
-                    headers: {'Content-Type':'application/json'},
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        apiKey: document.getElementById('txt-gemini-key').value.trim()
+                        mensaje: msg,
+                        instrucciones: document.getElementById('txt-instrucciones')?.value || "",
+                        apiKey: document.getElementById('txt-gemini-key')?.value || ""
                     })
                 });
+                const data = await res.json();
+                if (data.success && data.respuesta) {
+                    const msgHTML = `
+                        <div class="bg-slate-900 border border-slate-800 p-2.5 rounded-xl text-slate-300">
+                            <span class="text-[9px] font-bold text-purple-400 block mb-1">🤖 IA CLON</span>
+                            ${escapeHtml(data.respuesta)}
+                        </div>
+                    `;
+                    chatProbador.insertAdjacentHTML('beforeend', msgHTML);
+                } else {
+                    const msgHTML = `
+                        <div class="bg-red-950/60 border border-red-800/80 p-2.5 rounded-xl text-red-300">
+                            <span class="text-[9px] font-bold text-red-400 block mb-1">⚠️ ERROR IA</span>
+                            ${escapeHtml(data.error || 'Error procesando respuesta.')}
+                        </div>
+                    `;
+                    chatProbador.insertAdjacentHTML('beforeend', msgHTML);
+                }
+            } catch (err) {
+                const msgHTML = `
+                    <div class="bg-red-950/60 border border-red-800/80 p-2.5 rounded-xl text-red-300">
+                        <span class="text-[9px] font-bold text-red-400 block mb-1">⚠️ ERROR CONEXIÓN</span>
+                        ${escapeHtml(err.message)}
+                    </div>
+                `;
+                chatProbador.insertAdjacentHTML('beforeend', msgHTML);
+            } finally {
+                if (btn) btn.disabled = false;
+                chatProbador.scrollTop = chatProbador.scrollHeight;
             }
         }
 
@@ -480,9 +508,9 @@
                 });
                 const data = await res.json();
                 if (data.success) {
-                    alert("🔑 ¡API Key Guardada Exitosamente!\n\nProveedor: " + (data.proveedorNombre || provInfo.nombre));
+                    alert("🔑 ¡API Key Guardada Exitosamente en el Servidor Backend!\n\nProveedor: " + (data.proveedorNombre || provInfo.nombre));
                 } else {
-                    alert("🔑 ¡API Key Guardada Localmente en la pantalla web!\n\nProveedor: " + provInfo.nombre);
+                    alert("🔑 ¡API Key Guardada Localmente!\n\nProveedor: " + provInfo.nombre);
                 }
             } catch (e) {
                 alert("🔑 ¡API Key Guardada Exitosamente en la pantalla web!\n\nProveedor Detectado: " + provInfo.nombre);

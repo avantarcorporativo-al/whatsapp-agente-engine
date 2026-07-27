@@ -1,13 +1,9 @@
 /**
  * ==============================================================================
- * AGENTE UNIVERSAL ENGINE - SERVIDOR WHATSAPP & MULTI-IA CON MEMORIA AMPLIADA (50 MSGS)
- * ==============================================================================
- * Stack: Node.js, Express, Socket.io, @whiskeysockets/baileys, DeepSeek, OpenRouter, Gemini
+ * AGENTE UNIVERSAL ENGINE - SERVIDOR WHATSAPP & MULTI-IA
  * ==============================================================================
  */
-
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
-
 const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
@@ -17,14 +13,13 @@ const path = require('path');
 const https = require('https');
 const QRCode = require('qrcode');
 const pino = require('pino');
-
 const baileys = require('@whiskeysockets/baileys');
 const makeWASocket = baileys.default || baileys.makeWASocket || baileys;
 const { useMultiFileAuthState, DisconnectReason, fetchLatestBaileysVersion } = baileys;
 
-// 1. CONFIGURACIÓN DEL SERVIDOR EXPRESS & SOCKET.IO (PUERTO 3001)
 const app = express();
-app.use(cors({ origin: '*' }));
+app.use(cors({ origin: '*', methods: ['GET', 'POST', 'OPTIONS'], allowedHeaders: ['Content-Type', 'Authorization'] }));
+app.options('*', cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(process.cwd()));
@@ -38,9 +33,8 @@ const PORT = process.env.PORT || 3001;
 const CONFIG_PATH = path.join(__dirname, 'config.json');
 const AUTH_FOLDER = path.join(__dirname, 'sesion_whatsapp_auth');
 
-// 2. CONFIGURACIÓN POR DEFECTO UNIVERSAL
 const DEFAULT_CONFIG = {
-    apiKey: process.env.GEMINI_API_KEY || process.env.OPENROUTER_API_KEY || "",
+    apiKey: process.env.OPENROUTER_API_KEY || process.env.GEMINI_API_KEY || "",
     instruccionesUniversales: "Eres el mejor Vendedor del mundo, experto en neuroventas y atención al cliente. Te llamas \"AL\". Responde siempre de forma corta, amable y directa en 2 a 3 renglones. Saluda solo en el primer mensaje.",
     puenteActivo: true,
     sistemaEncendido: true,
@@ -56,7 +50,12 @@ function cargarConfig() {
     }
     try {
         const data = fs.readFileSync(CONFIG_PATH, 'utf-8');
-        return { ...DEFAULT_CONFIG, ...JSON.parse(data) };
+        const parsed = JSON.parse(data);
+        return { 
+            ...DEFAULT_CONFIG, 
+            ...parsed,
+            apiKey: parsed.apiKey || process.env.OPENROUTER_API_KEY || process.env.GEMINI_API_KEY || ""
+        };
     } catch (e) {
         return { ...DEFAULT_CONFIG };
     }
@@ -72,8 +71,6 @@ function guardarConfigDisco(nuevaConfig) {
 }
 
 let configActual = cargarConfig();
-
-// 3. ESTADO GLOBAL EN MEMORIA & MEMORIA AMPLIADA A 50 MENSAJES POR CLIENTE
 let sock = null;
 let qrActualBase64 = null;
 let estadoConexion = 'desconectado';
@@ -84,8 +81,8 @@ function identificarProveedorClave(key) {
     const k = (key || '').trim();
     if (!k) return "NINGUNO (Clave Vacía)";
     if (k.startsWith('sk-or-')) return "OpenRouter (DeepSeek R1 / V3)";
-    if (k.startsWith('sk-')) return "DeepSeek Oficial (platform.deepseek.com)";
-    if (k.startsWith('AIza')) return "Google Gemini (Google AI Studio)";
+    if (k.startsWith('sk-')) return "DeepSeek Oficial";
+    if (k.startsWith('AIza')) return "Google Gemini";
     return "API OpenAI Compatible Genérica";
 }
 
@@ -100,7 +97,6 @@ function extraerTextoMensaje(m) {
            null;
 }
 
-// 4. MOTOR MULTI-IA UNIVERSAL CON MEMORIA DE DIÁLOGO EXTENDIDA
 function realizarPeticionOpenAICompatible(endpointUrl, apiKey, modelName, systemPrompt, userMessage, conversationHistory = []) {
     return new Promise((resolve, reject) => {
         const messages = [
@@ -108,16 +104,9 @@ function realizarPeticionOpenAICompatible(endpointUrl, apiKey, modelName, system
             ...conversationHistory,
             { role: 'user', content: userMessage }
         ];
-
-        const payloadObj = {
-            model: modelName,
-            messages: messages,
-            stream: false
-        };
-
+        const payloadObj = { model: modelName, messages: messages, stream: false };
         const payload = JSON.stringify(payloadObj);
         const urlParsed = new URL(endpointUrl);
-
         const options = {
             hostname: urlParsed.hostname,
             path: urlParsed.pathname + urlParsed.search,
@@ -128,7 +117,6 @@ function realizarPeticionOpenAICompatible(endpointUrl, apiKey, modelName, system
                 'Content-Length': Buffer.byteLength(payload)
             }
         };
-
         const req = https.request(options, (res) => {
             let body = '';
             res.on('data', chunk => body += chunk);
@@ -147,7 +135,6 @@ function realizarPeticionOpenAICompatible(endpointUrl, apiKey, modelName, system
                 }
             });
         });
-
         req.on('error', (e) => reject(e));
         req.write(payload);
         req.end();
@@ -163,20 +150,12 @@ function realizarPeticionGeminiHTTP(modelName, systemPrompt, userMessage, apiKey
                 parts: [{ text: h.content }]
             });
         }
-        contents.push({
-            role: 'user',
-            parts: [{ text: userMessage }]
-        });
-
+        contents.push({ role: 'user', parts: [{ text: userMessage }] });
         const payloadObj = {
-            systemInstruction: {
-                parts: [{ text: systemPrompt }]
-            },
+            systemInstruction: { parts: [{ text: systemPrompt }] },
             contents: contents
         };
-
         const payload = JSON.stringify(payloadObj);
-
         const options = {
             hostname: 'generativelanguage.googleapis.com',
             path: `/v1beta/models/${modelName}:generateContent?key=${encodeURIComponent(apiKey)}`,
@@ -186,7 +165,6 @@ function realizarPeticionGeminiHTTP(modelName, systemPrompt, userMessage, apiKey
                 'Content-Length': Buffer.byteLength(payload)
             }
         };
-
         const req = https.request(options, (res) => {
             let body = '';
             res.on('data', chunk => body += chunk);
@@ -205,7 +183,6 @@ function realizarPeticionGeminiHTTP(modelName, systemPrompt, userMessage, apiKey
                 }
             });
         });
-
         req.on('error', (e) => reject(e));
         req.write(payload);
         req.end();
@@ -213,17 +190,13 @@ function realizarPeticionGeminiHTTP(modelName, systemPrompt, userMessage, apiKey
 }
 
 async function consultarIAUniversal(userMessage, systemPromptReq, apiKeyReq, conversationHistory = []) {
-    const keyLimpia = (apiKeyReq || configActual.apiKey || process.env.GEMINI_API_KEY || process.env.OPENROUTER_API_KEY || '').trim();
+    const keyLimpia = (apiKeyReq || configActual.apiKey || process.env.OPENROUTER_API_KEY || process.env.GEMINI_API_KEY || '').trim();
     const sistema = systemPromptReq || configActual.instruccionesUniversales || "Eres un Agente Virtual atento y servicial.";
-
+    
     if (!keyLimpia) {
-        throw new Error("No hay API Key configurada. Ingresa tu clave en el panel.");
+        throw new Error("No hay API Key configurada. Ingrésala en el panel o en Render Environment Variables.");
     }
 
-    const provNombre = identificarProveedorClave(keyLimpia);
-    console.log(`🧠 [CLON] Consultando IA [${provNombre}] (Historial: ${conversationHistory.length} msgs)...`);
-
-    // A. OPENROUTER (sk-or-)
     if (keyLimpia.startsWith('sk-or-')) {
         const modelosOR = ["deepseek/deepseek-chat", "deepseek/deepseek-r1", "google/gemini-2.0-flash-exp:free"];
         let errores = [];
@@ -236,7 +209,6 @@ async function consultarIAUniversal(userMessage, systemPromptReq, apiKeyReq, con
         throw new Error(`OpenRouter Error: ${errores[0] || 'Clave de OpenRouter inválida'}`);
     }
 
-    // B. DEEPSEEK OFICIAL (sk-)
     if (keyLimpia.startsWith('sk-')) {
         try {
             const reply = await realizarPeticionOpenAICompatible("https://api.deepseek.com/v1/chat/completions", keyLimpia, "deepseek-chat", sistema, userMessage, conversationHistory);
@@ -246,7 +218,6 @@ async function consultarIAUniversal(userMessage, systemPromptReq, apiKeyReq, con
         }
     }
 
-    // C. GOOGLE GEMINI (AIza)
     const modelosGemini = ["gemini-flash-latest", "gemini-flash-lite-latest", "gemini-2.0-flash"];
     let ultimoError = "";
     for (const m of modelosGemini) {
@@ -256,47 +227,33 @@ async function consultarIAUniversal(userMessage, systemPromptReq, apiKeyReq, con
         } catch(e) { 
             ultimoError = e.message;
             if (ultimoError.includes("Quota exceeded") || ultimoError.includes("quota")) {
-                throw new Error(`Cuota de Google Gemini Agotada en esta clave AIza. Por favor usa tu clave de OpenRouter (sk-or-...).`);
+                throw new Error(`Cuota de Google Gemini Agotada en esta clave AIza. Usa tu clave de OpenRouter (sk-or-...).`);
             }
         }
     }
-
     throw new Error(`Error en Gemini API: ${ultimoError || "Verifica tu API Key"}`);
 }
 
-// 5. INICIALIZACIÓN DE BAILEYS WHATSAPP
 async function iniciarBaileys(forceReset = false) {
     if (!configActual.sistemaEncendido) {
-        console.log('🔴 [CLON] Sistema configurado en APAGADO.');
         estadoConexion = 'apagado';
         io.emit('whatsapp_status', 'disconnected');
         return;
     }
-
     if (forceReset) {
         qrActualBase64 = null;
-        if (sock) {
-            try { sock.end(undefined); } catch(e){}
-            sock = null;
-        }
+        if (sock) { try { sock.end(undefined); } catch(e){} sock = null; }
         if (fs.existsSync(AUTH_FOLDER)) {
-            try {
-                fs.rmSync(AUTH_FOLDER, { recursive: true, force: true });
-                console.log("🧹 [CLON] Carpetas de sesión limpiadas.");
-            } catch(e){}
+            try { fs.rmSync(AUTH_FOLDER, { recursive: true, force: true }); } catch(e){}
         }
     } else if (sock) {
-        if (qrActualBase64 && estadoConexion !== 'conectado') {
-            io.emit('whatsapp_qr', qrActualBase64);
-        }
+        if (qrActualBase64 && estadoConexion !== 'conectado') io.emit('whatsapp_qr', qrActualBase64);
         return;
     }
 
     try {
-        console.log('🔄 [CLON] Iniciando motor de Baileys WhatsApp en Puerto 3001...');
         estadoConexion = 'conectando';
         io.emit('whatsapp_status', 'connecting');
-
         const { state, saveCreds } = await useMultiFileAuthState(AUTH_FOLDER);
         let version;
         try {
@@ -305,20 +262,16 @@ async function iniciarBaileys(forceReset = false) {
         } catch (e) {
             version = [2, 3000, 1015901307];
         }
-
         sock = makeWASocket({
             version,
             auth: state,
             printQRInTerminal: false,
             logger: pino({ level: 'fatal' }),
-            browser: ["Agente Universal Engine (CLON)", "Chrome", "1.0.0"]
+            browser: ["Agente Universal Engine", "Chrome", "1.0.0"]
         });
-
         sock.ev.on('creds.update', saveCreds);
-
         sock.ev.on('connection.update', async (update) => {
             const { connection, lastDisconnect, qr } = update;
-
             if (qr) {
                 try {
                     qrActualBase64 = await QRCode.toDataURL(qr);
@@ -327,17 +280,13 @@ async function iniciarBaileys(forceReset = false) {
                     io.emit('whatsapp_status', 'qr');
                 } catch (e) {}
             }
-
             if (connection === 'connecting') {
                 estadoConexion = 'conectando';
                 io.emit('whatsapp_status', 'connecting');
             }
-
             if (connection === 'close') {
                 const reason = lastDisconnect?.error?.output?.statusCode;
-                console.log(`🔌 [CLON] Conexión cerrada. Código HTTP: ${reason}`);
                 sock = null;
-
                 if (reason === DisconnectReason.loggedOut || reason === 401) {
                     estadoConexion = 'desconectado';
                     io.emit('whatsapp_status', 'disconnected');
@@ -348,7 +297,6 @@ async function iniciarBaileys(forceReset = false) {
                     setTimeout(() => iniciarBaileys(false), 1500);
                 }
             } else if (connection === 'open') {
-                console.log("✅ [CLON] ¡WHATSAPP CONECTADO EXITOSAMENTE A META!");
                 qrActualBase64 = null;
                 estadoConexion = 'conectado';
                 io.emit('whatsapp_status', 'conectado');
@@ -361,11 +309,8 @@ async function iniciarBaileys(forceReset = false) {
                 if (!m.message || m.key.fromMe) continue;
                 const textoCliente = extraerTextoMensaje(m);
                 const remitente = m.key.remoteJid;
-
                 if (textoCliente && remitente) {
                     const nombre = m.pushName || remitente.split('@')[0];
-                    console.log(`💬 [CLON] Mensaje de ${nombre}: "${textoCliente}"`);
-
                     const itemRecibido = {
                         id: Date.now().toString(),
                         remitente: nombre,
@@ -383,20 +328,17 @@ async function iniciarBaileys(forceReset = false) {
                                 historialConversacionPorCliente[remitente] = [];
                             }
                             const contextoCliente = historialConversacionPorCliente[remitente];
-
                             const respuestaIA = await consultarIAUniversal(textoCliente, configActual.instruccionesUniversales, configActual.apiKey, contextoCliente);
                             if (respuestaIA && sock) {
                                 await sock.sendMessage(remitente, { text: respuestaIA });
-
                                 historialConversacionPorCliente[remitente].push({ role: 'user', content: textoCliente });
                                 historialConversacionPorCliente[remitente].push({ role: 'assistant', content: respuestaIA });
                                 if (historialConversacionPorCliente[remitente].length > 50) {
                                     historialConversacionPorCliente[remitente] = historialConversacionPorCliente[remitente].slice(-50);
                                 }
-
                                 const itemEnviado = {
                                     id: (Date.now() + 1).toString(),
-                                    remitente: '🤖 IA Gemini (CLON)',
+                                    remitente: '🤖 IA Gemini / OpenRouter',
                                     texto: respuestaIA,
                                     tipo: 'enviado',
                                     timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -405,26 +347,23 @@ async function iniciarBaileys(forceReset = false) {
                                 io.emit('nuevo_mensaje', itemEnviado);
                             }
                         } catch (errIA) {
-                            console.error("❌ [CLON] Error procesando respuesta con IA:", errIA.message);
+                            console.error("❌ Error procesando respuesta con IA:", errIA.message);
                         }
-                    } else {
-                        console.log("⏸️ [CLON] IA en pausa para WhatsApp.");
                     }
                 }
             }
         });
-
     } catch (e) {
         console.error("❌ Error iniciando Baileys:", e);
     }
 }
 
-// 6. RUTAS API HTTP
+// ENDPOINTS HTTP
 app.get('/api/config', (_req, res) => {
     res.json({
         success: true,
         config: configActual,
-        proveedorNombre: identificarProveedorClave(configActual.apiKey || process.env.GEMINI_API_KEY || process.env.OPENROUTER_API_KEY || "")
+        proveedorNombre: identificarProveedorClave(configActual.apiKey || process.env.OPENROUTER_API_KEY || process.env.GEMINI_API_KEY || "")
     });
 });
 
@@ -434,7 +373,7 @@ app.post('/api/save-key', (req, res) => {
         configActual.apiKey = apiKey.trim();
         guardarConfigDisco(configActual);
     }
-    res.json({ success: true, message: 'Clave API Key guardada exitosamente.', proveedorNombre: identificarProveedorClave(configActual.apiKey) });
+    res.json({ success: true, message: 'Clave guardada exitosamente.', proveedorNombre: identificarProveedorClave(configActual.apiKey) });
 });
 
 app.post('/api/save-instructions', (req, res) => {
@@ -444,6 +383,17 @@ app.post('/api/save-instructions', (req, res) => {
         guardarConfigDisco(configActual);
     }
     res.json({ success: true, message: 'Instrucciones guardadas exitosamente.' });
+});
+
+// NUEVO ENDPOINT REST PARA PROBAR IA DESDE LA WEB SIN CORS
+app.post('/api/probar-ia', async (req, res) => {
+    try {
+        const { mensaje, instrucciones, apiKey } = req.body;
+        const respuesta = await consultarIAUniversal(mensaje, instrucciones, apiKey);
+        res.json({ success: true, respuesta });
+    } catch (error) {
+        res.status(500).json({ success: false, error: error.message });
+    }
 });
 
 app.post('/api/generar-qr-nuevo', (_req, res) => {
@@ -472,7 +422,6 @@ app.post('/api/encender-total', (_req, res) => {
     res.json({ success: true, message: 'Sistema Encendido.' });
 });
 
-// 7. WEBSOCKETS SOCKET.IO
 let historialProbadorWeb = [];
 io.on('connection', (socket) => {
     socket.emit('whatsapp_status', estadoConexion);
@@ -498,10 +447,7 @@ io.on('connection', (socket) => {
     });
 });
 
-// 8. ARRANCAR SERVIDOR HTTP
 server.listen(PORT, '0.0.0.0', () => {
-    console.log(`=============================================================================`);
-    console.log(` 🚀 WHATSAPP PAGINA UNIVERSAL CLON CORRIENDO EN http://localhost:${PORT}`);
-    console.log(`=============================================================================`);
+    console.log(`🚀 Servidor ejecutándose en puerto ${PORT}`);
     iniciarBaileys(false);
 });
