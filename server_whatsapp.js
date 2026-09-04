@@ -80,6 +80,7 @@ let historialConversacionPorCliente = {};
 function identificarProveedorClave(key) {
     const k = (key || '').trim();
     if (!k) return "NINGUNO (Clave Vacía)";
+    if (k.startsWith('gsk_')) return "Groq Cloud (Llama 3.3 70B Ultra Rápido)";
     if (k.startsWith('sk-or-')) return "OpenRouter (DeepSeek R1 / V3)";
     if (k.startsWith('sk-')) return "DeepSeek Oficial";
     if (k.startsWith('AIza')) return "Google Gemini";
@@ -190,13 +191,27 @@ function realizarPeticionGeminiHTTP(modelName, systemPrompt, userMessage, apiKey
 }
 
 async function consultarIAUniversal(userMessage, systemPromptReq, apiKeyReq, conversationHistory = []) {
-    const keyLimpia = (apiKeyReq || configActual.apiKey || process.env.OPENROUTER_API_KEY || process.env.GEMINI_API_KEY || '').trim();
+    const keyLimpia = (apiKeyReq || configActual.apiKey || process.env.GROQ_API_KEY || process.env.OPENROUTER_API_KEY || process.env.GEMINI_API_KEY || '').trim();
     const sistema = systemPromptReq || configActual.instruccionesUniversales || "Eres un Agente Virtual atento y servicial.";
     
     if (!keyLimpia) {
         throw new Error("No hay API Key configurada. Ingrésala en el panel o en Render Environment Variables.");
     }
 
+    // 1. SOPORTE DIRECTO GROQ CLOUD (Ultra Rápido)
+    if (keyLimpia.startsWith('gsk_')) {
+        const modelosGroq = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant", "mixtral-8x7b-32768"];
+        let errores = [];
+        for (const m of modelosGroq) {
+            try {
+                const reply = await realizarPeticionOpenAICompatible("https://api.groq.com/openai/v1/chat/completions", keyLimpia, m, sistema, userMessage, conversationHistory);
+                if (reply) return reply;
+            } catch(e) { errores.push(e.message); }
+        }
+        throw new Error(`Groq API Error: ${errores[0] || 'Error al conectar con Groq'}`);
+    }
+
+    // 2. SOPORTE OPENROUTER
     if (keyLimpia.startsWith('sk-or-')) {
         const modelosOR = ["deepseek/deepseek-chat", "deepseek/deepseek-r1", "google/gemini-2.0-flash-exp:free"];
         let errores = [];
@@ -209,6 +224,7 @@ async function consultarIAUniversal(userMessage, systemPromptReq, apiKeyReq, con
         throw new Error(`OpenRouter Error: ${errores[0] || 'Clave de OpenRouter inválida'}`);
     }
 
+    // 3. SOPORTE DEEPSEEK OFICIAL
     if (keyLimpia.startsWith('sk-')) {
         try {
             const reply = await realizarPeticionOpenAICompatible("https://api.deepseek.com/v1/chat/completions", keyLimpia, "deepseek-chat", sistema, userMessage, conversationHistory);
@@ -218,6 +234,7 @@ async function consultarIAUniversal(userMessage, systemPromptReq, apiKeyReq, con
         }
     }
 
+    // 4. SOPORTE GOOGLE GEMINI
     const modelosGemini = ["gemini-flash-latest", "gemini-flash-lite-latest", "gemini-2.0-flash"];
     let ultimoError = "";
     for (const m of modelosGemini) {
@@ -227,7 +244,7 @@ async function consultarIAUniversal(userMessage, systemPromptReq, apiKeyReq, con
         } catch(e) { 
             ultimoError = e.message;
             if (ultimoError.includes("Quota exceeded") || ultimoError.includes("quota")) {
-                throw new Error(`Cuota de Google Gemini Agotada en esta clave AIza. Usa tu clave de OpenRouter (sk-or-...).`);
+                throw new Error(`Cuota de Google Gemini Agotada en esta clave AIza.`);
             }
         }
     }
@@ -267,36 +284,61 @@ async function iniciarBaileys(forceReset = false) {
             auth: state,
             printQRInTerminal: false,
             logger: pino({ level: 'fatal' }),
-            browser: ["Agente Universal Engine", "Chrome", "1.0.0"]
+            browser: ["Agente Universal", "Chrome", "1.0.0"],
+            connectTimeoutMs: 60000,
+            defaultQueryTimeoutMs: 60000,
+            keepAliveIntervalMs: 15000,
+            markOnlineOnConnect: true,
+            syncFullHistory: false,
+            generateHighQualityLinkPreview: true,
+            maxMsgRetryCount: 5,
+            retryRequestDelayMs: 250
         });
+
         sock.ev.on('creds.update', saveCreds);
+
         sock.ev.on('connection.update', async (update) => {
             const { connection, lastDisconnect, qr } = update;
+
             if (qr) {
                 try {
                     qrActualBase64 = await QRCode.toDataURL(qr);
                     estadoConexion = 'qr';
                     io.emit('whatsapp_qr', qrActualBase64);
                     io.emit('whatsapp_status', 'qr');
+                    console.log('📷 Código QR emitido a la web.');
                 } catch (e) {}
             }
+
             if (connection === 'connecting') {
                 estadoConexion = 'conectando';
                 io.emit('whatsapp_status', 'connecting');
             }
+
             if (connection === 'close') {
-                const reason = lastDisconnect?.error?.output?.statusCode;
-                sock = null;
-                if (reason === DisconnectReason.loggedOut || reason === 401) {
+                const statusCode = lastDisconnect?.error?.output?.statusCode;
+                console.log(`🔌 Conexión cerrada. Código: ${statusCode}`);
+                
+                // Limpiar referencia de socket para evitar sockets duplicados
+                if (sock) {
+                    try { sock.end(undefined); } catch(e){}
+                    sock = null;
+                }
+
+                if (statusCode === DisconnectReason.loggedOut || statusCode === 401) {
+                    console.log('🔒 Sesión cerrada desde el celular. Regenerando...');
                     estadoConexion = 'desconectado';
                     io.emit('whatsapp_status', 'disconnected');
                     iniciarBaileys(true);
                 } else {
+                    // Re-conexión limpia y automática tras escanear o micro-corte (Status 515 / restartRequired)
+                    console.log('🔄 Reanudando conexión WebSocket con Meta en 1.5s...');
                     estadoConexion = 'conectando';
                     io.emit('whatsapp_status', 'connecting');
                     setTimeout(() => iniciarBaileys(false), 1500);
                 }
             } else if (connection === 'open') {
+                console.log('✅ ¡WHATSAPP CONECTADO EXITOSAMENTE A META!');
                 qrActualBase64 = null;
                 estadoConexion = 'conectado';
                 io.emit('whatsapp_status', 'conectado');

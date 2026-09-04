@@ -246,7 +246,7 @@
         </div>
     </section>
 
-    <!-- SCRIPT FRONTEND COMPLETO CON CONEXIÓN REST PROXY A RENDER -->
+    <!-- SCRIPT FRONTEND COMPLETO CON CONEXIÓN REST PROXY Y SCROLL MÓVIL OPTIMIZADO -->
     <script>
         if (window.lucide) lucide.createIcons();
 
@@ -339,11 +339,19 @@
                     const contenedor = document.getElementById('contenedor-mensajes-chat');
                     if (!contenedor) return;
                     contenedor.innerHTML = '';
-                    historial.forEach(msg => agregarMensajeAlMonitor(msg));
+                    
+                    // Invertir para renderizar cronológicamente de viejo a nuevo (arriba a abajo)
+                    const historialCronologico = [...historial].reverse();
+                    historialCronologico.forEach(msg => agregarMensajeAlMonitor(msg, false));
+                    
+                    // Forzar auto-scroll al fondo del contenedor en móviles
+                    setTimeout(() => {
+                        contenedor.scrollTop = contenedor.scrollHeight;
+                    }, 100);
                 });
 
                 socket.on('nuevo_mensaje', (msg) => {
-                    agregarMensajeAlMonitor(msg);
+                    agregarMensajeAlMonitor(msg, true);
                 });
 
                 socket.on('respuesta_ia_web', (res) => {
@@ -368,7 +376,7 @@
                         `;
                         chatProbador.insertAdjacentHTML('beforeend', msgHTML);
                     }
-                    chatProbador.scrollTop = chatProbador.scrollHeight;
+                    setTimeout(() => { chatProbador.scrollTop = chatProbador.scrollHeight; }, 50);
                 });
 
                 socket.on('puente_estado', (estado) => {
@@ -396,7 +404,7 @@
             `;
             chatProbador.insertAdjacentHTML('beforeend', userHTML);
             input.value = '';
-            chatProbador.scrollTop = chatProbador.scrollHeight;
+            setTimeout(() => { chatProbador.scrollTop = chatProbador.scrollHeight; }, 50);
 
             try {
                 const targetServer = backendUrl || RENDER_BACKEND_URL;
@@ -437,7 +445,7 @@
                 chatProbador.insertAdjacentHTML('beforeend', msgHTML);
             } finally {
                 if (btn) btn.disabled = false;
-                chatProbador.scrollTop = chatProbador.scrollHeight;
+                setTimeout(() => { chatProbador.scrollTop = chatProbador.scrollHeight; }, 50);
             }
         }
 
@@ -469,7 +477,7 @@
             }
         }
 
-        function agregarMensajeAlMonitor(msg) {
+        function agregarMensajeAlMonitor(msg, autoScroll = true) {
             const contenedor = document.getElementById('contenedor-mensajes-chat');
             if (!contenedor) return;
 
@@ -488,7 +496,9 @@
                 </div>
             `;
             contenedor.insertAdjacentHTML('beforeend', msgHTML);
-            contenedor.scrollTop = contenedor.scrollHeight;
+            if (autoScroll) {
+                setTimeout(() => { contenedor.scrollTop = contenedor.scrollHeight; }, 50);
+            }
         }
 
         async function guardarApiKey() {

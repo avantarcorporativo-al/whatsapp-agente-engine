@@ -19,38 +19,17 @@
 </head>
 <body class="text-slate-100 min-h-screen p-4 md:p-6 max-w-7xl mx-auto space-y-6 custom-scrollbar flex flex-col">
 
-    <!-- PANTALLA DE CAMUFLAJE Y SEGURIDAD (MODO SIGILO / STEALTH SCREEN) -->
-    <div id="stealth-screen" class="fixed inset-0 z-[99999] bg-black flex flex-col items-center justify-center transition-opacity duration-500">
-        <div id="secret-corner-trigger" class="fixed top-0 left-0 w-28 h-28 cursor-pointer select-none z-[100000]"></div>
-
-        <div id="stealth-blank-view" class="text-center p-6 space-y-4">
-            <p class="text-slate-700 text-xs font-mono select-none">404 Not Found (CLON)</p>
-            <button onclick="mostrarModalPin()" class="bg-slate-900/60 border border-slate-800/80 hover:bg-slate-800 text-slate-400 font-medium text-xs px-4 py-2 rounded-xl transition shadow-lg flex items-center gap-2 mx-auto">
-                🔒 Desbloquear Agente CLON (PIN)
-            </button>
-        </div>
-
-        <div id="pin-modal" class="hidden bg-slate-900 border border-slate-800 rounded-2xl p-6 w-80 shadow-2xl space-y-4 text-center">
-            <div class="w-12 h-12 bg-purple-500/10 border border-purple-500/30 rounded-full flex items-center justify-center mx-auto text-purple-400 text-xl">
-                🔒
-            </div>
-            <div>
-                <h3 class="text-base font-bold text-white">Acceso Privado CLON</h3>
-                <p class="text-xs text-slate-400 mt-1">Ingresa el PIN de seguridad:</p>
-            </div>
-            
+    <!-- PANTALLA DE ACCESO ULTRA-MINIMALISTA (SOLO INPUT Y BOTÓN) -->
+    <div id="stealth-screen" class="fixed inset-0 z-[99999] bg-black flex items-center justify-center transition-opacity duration-500">
+        <div class="flex flex-col items-center gap-4 w-72">
             <input type="password" id="txt-secret-pin" maxlength="10" placeholder="••••" 
-                class="w-full text-center tracking-widest text-lg font-bold bg-slate-950 border border-slate-800 rounded-xl py-3 text-white focus:outline-none focus:border-purple-500" />
+                onkeypress="if(event.key==='Enter') verificarPin()"
+                class="w-full text-center tracking-widest text-xl font-bold bg-slate-950 border border-slate-800 rounded-2xl py-3.5 text-white focus:outline-none focus:border-cyan-500 shadow-inner" />
             
-            <div class="flex gap-2">
-                <button onclick="cancelarIngresoPin()" class="w-1/2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs py-2.5 rounded-xl">
-                    Cancelar
-                </button>
-                <button onclick="verificarPin()" class="w-1/2 bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs py-2.5 rounded-xl">
-                    Desbloquear
-                </button>
-            </div>
-            <p id="lbl-pin-error" class="text-red-400 text-xs hidden font-medium">⚠️ PIN Incorrecto.</p>
+            <button onclick="verificarPin()" class="w-full bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-cyan-500/50 text-white font-bold py-3.5 rounded-2xl transition shadow-xl flex items-center justify-center">
+                <i data-lucide="arrow-right" class="w-5 h-5 text-cyan-400"></i>
+            </button>
+            <p id="lbl-pin-error" class="text-red-500 text-xs hidden font-bold tracking-wider">⚠️</p>
         </div>
     </div>
 
@@ -149,7 +128,7 @@
             </h2>
         </div>
         <textarea id="txt-instrucciones" rows="7" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-xs text-slate-100 focus:outline-none focus:border-purple-500 transition-all leading-relaxed custom-scrollbar" placeholder="Instrucciones del Agente..."></textarea>
-        <button onclick="guardarInstrucciones()" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-extrabold py-3 px-4 rounded-xl flex items-center justify-center gap-2 text-xs transition-all shadow-lg shadow-purple-900/30">
+        <button id="btn-guardar-instrucciones" onclick="guardarInstrucciones()" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-extrabold py-3 px-4 rounded-xl flex items-center justify-center gap-2 text-xs transition-all shadow-lg shadow-purple-900/30">
             <i data-lucide="save" class="w-4 h-4"></i>
             💾 Guardar Solo Instrucciones
         </button>
@@ -246,7 +225,7 @@
         </div>
     </section>
 
-    <!-- SCRIPT FRONTEND COMPLETO CON CONEXIÓN REST PROXY A RENDER -->
+    <!-- SCRIPT FRONTEND COMPLETO CON CONEXIÓN REST PROXY Y SCROLL MÓVIL OPTIMIZADO -->
     <script>
         if (window.lucide) lucide.createIcons();
 
@@ -264,6 +243,7 @@
         function obtenerInfoProveedorFrontend(key) {
             const k = (key || '').trim();
             if (!k) return { nombre: "Sin API Key ingresada", clase: "text-slate-500 font-medium" };
+            if (k.startsWith('gsk_')) return { nombre: "⚡ Groq Cloud (Llama 3.3 70B Ultra Rápido)", clase: "text-orange-400 font-bold" };
             if (k.startsWith('sk-or-')) return { nombre: "🟣 OpenRouter (DeepSeek R1 / V3)", clase: "text-purple-400 font-bold" };
             if (k.startsWith('sk-')) return { nombre: "🔵 DeepSeek Oficial (platform.deepseek.com)", clase: "text-blue-400 font-bold" };
             if (k.startsWith('AIza')) return { nombre: "🟢 Google Gemini (Google AI Studio)", clase: "text-emerald-400 font-bold" };
@@ -271,6 +251,13 @@
         }
 
         async function cargarConfiguracionInicial() {
+            // 1. Cargar primero de LocalStorage por si el backend tarda en responder
+            const savedLocalInstructions = localStorage.getItem('agente_instrucciones_guardadas');
+            const txtInstructions = document.getElementById('txt-instrucciones');
+            if (savedLocalInstructions && txtInstructions && !txtInstructions.value) {
+                txtInstructions.value = savedLocalInstructions;
+            }
+
             try {
                 const res = await fetch(`${backendUrl}/api/config`);
                 const data = await res.json();
@@ -278,7 +265,10 @@
                     const cfg = data.config || data;
                     const apiKeyInput = document.getElementById('txt-gemini-key');
                     if (!apiKeyInput.value) apiKeyInput.value = cfg.apiKey || '';
-                    document.getElementById('txt-instrucciones').value = cfg.instruccionesUniversales || '';
+                    if (cfg.instruccionesUniversales) {
+                        if (txtInstructions) txtInstructions.value = cfg.instruccionesUniversales;
+                        localStorage.setItem('agente_instrucciones_guardadas', cfg.instruccionesUniversales);
+                    }
                     sistemaEncendido = cfg.sistemaEncendido !== false;
                     puenteActivo = cfg.puenteActivo !== false;
                     
@@ -339,11 +329,19 @@
                     const contenedor = document.getElementById('contenedor-mensajes-chat');
                     if (!contenedor) return;
                     contenedor.innerHTML = '';
-                    historial.forEach(msg => agregarMensajeAlMonitor(msg));
+                    
+                    // Invertir para renderizar cronológicamente de viejo a nuevo (arriba a abajo)
+                    const historialCronologico = [...historial].reverse();
+                    historialCronologico.forEach(msg => agregarMensajeAlMonitor(msg, false));
+                    
+                    // Forzar auto-scroll al fondo del contenedor en móviles
+                    setTimeout(() => {
+                        contenedor.scrollTop = contenedor.scrollHeight;
+                    }, 100);
                 });
 
                 socket.on('nuevo_mensaje', (msg) => {
-                    agregarMensajeAlMonitor(msg);
+                    agregarMensajeAlMonitor(msg, true);
                 });
 
                 socket.on('respuesta_ia_web', (res) => {
@@ -368,7 +366,7 @@
                         `;
                         chatProbador.insertAdjacentHTML('beforeend', msgHTML);
                     }
-                    chatProbador.scrollTop = chatProbador.scrollHeight;
+                    setTimeout(() => { chatProbador.scrollTop = chatProbador.scrollHeight; }, 50);
                 });
 
                 socket.on('puente_estado', (estado) => {
@@ -396,7 +394,7 @@
             `;
             chatProbador.insertAdjacentHTML('beforeend', userHTML);
             input.value = '';
-            chatProbador.scrollTop = chatProbador.scrollHeight;
+            setTimeout(() => { chatProbador.scrollTop = chatProbador.scrollHeight; }, 50);
 
             try {
                 const targetServer = backendUrl || RENDER_BACKEND_URL;
@@ -437,7 +435,7 @@
                 chatProbador.insertAdjacentHTML('beforeend', msgHTML);
             } finally {
                 if (btn) btn.disabled = false;
-                chatProbador.scrollTop = chatProbador.scrollHeight;
+                setTimeout(() => { chatProbador.scrollTop = chatProbador.scrollHeight; }, 50);
             }
         }
 
@@ -469,7 +467,7 @@
             }
         }
 
-        function agregarMensajeAlMonitor(msg) {
+        function agregarMensajeAlMonitor(msg, autoScroll = true) {
             const contenedor = document.getElementById('contenedor-mensajes-chat');
             if (!contenedor) return;
 
@@ -488,7 +486,21 @@
                 </div>
             `;
             contenedor.insertAdjacentHTML('beforeend', msgHTML);
-            contenedor.scrollTop = contenedor.scrollHeight;
+            if (autoScroll) {
+                setTimeout(() => { contenedor.scrollTop = contenedor.scrollHeight; }, 50);
+            }
+        }
+
+        // NOTIFICACIÓN ELEGANTE EN PANTALLA (SIN ALERTAS MOLESTAS)
+        function mostrarToast(mensaje, color = 'bg-cyan-600') {
+            const toast = document.createElement('div');
+            toast.className = `fixed bottom-5 right-5 z-[100000] ${color} text-white text-xs font-bold px-4 py-3 rounded-xl shadow-2xl transition-all duration-300 transform translate-y-0 flex items-center gap-2`;
+            toast.innerHTML = `<span>${mensaje}</span>`;
+            document.body.appendChild(toast);
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-4');
+                setTimeout(() => toast.remove(), 400);
+            }, 3000);
         }
 
         async function guardarApiKey() {
@@ -507,18 +519,27 @@
                     body: JSON.stringify({ apiKey })
                 });
                 const data = await res.json();
-                if (data.success) {
-                    alert("🔑 ¡API Key Guardada Exitosamente en el Servidor Backend!\n\nProveedor: " + (data.proveedorNombre || provInfo.nombre));
-                } else {
-                    alert("🔑 ¡API Key Guardada Localmente!\n\nProveedor: " + provInfo.nombre);
-                }
+                mostrarToast("🔑 API Key guardada en el servidor", "bg-emerald-600");
             } catch (e) {
-                alert("🔑 ¡API Key Guardada Exitosamente en la pantalla web!\n\nProveedor Detectado: " + provInfo.nombre);
+                mostrarToast("🔑 API Key guardada localmente", "bg-emerald-600");
             }
         }
 
         async function guardarInstrucciones() {
-            const instruccionesUniversales = document.getElementById('txt-instrucciones').value;
+            const txtArea = document.getElementById('txt-instrucciones');
+            const btn = document.getElementById('btn-guardar-instrucciones');
+            const instruccionesUniversales = txtArea ? txtArea.value.trim() : '';
+
+            // 1. Guardar de inmediato en LocalStorage del navegador (persistencia 100% garantizada)
+            localStorage.setItem('agente_instrucciones_guardadas', instruccionesUniversales);
+
+            // 2. Efecto visual en el botón mientras procesa
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Guardando...`;
+                if (window.lucide) lucide.createIcons();
+            }
+
             try {
                 const res = await fetch(`${backendUrl}/api/save-instructions`, {
                     method: 'POST',
@@ -526,35 +547,41 @@
                     body: JSON.stringify({ instruccionesUniversales })
                 });
                 const data = await res.json();
-                if (data.success) alert("📝 ¡Instrucciones Guardadas Exitosamente!");
-                else alert("📝 ¡Instrucciones Guardadas Localmente!");
+                mostrarToast("✅ ¡Instrucciones guardadas exitosamente!", "bg-purple-600");
             } catch (e) {
-                alert("📝 ¡Instrucciones Guardadas Exitosamente en la pantalla web!");
+                mostrarToast("✅ Instrucciones guardadas en tu navegador", "bg-purple-600");
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = `<i data-lucide="check" class="w-4 h-4 text-emerald-400"></i> ¡Guardado Exitoso!`;
+                    if (window.lucide) lucide.createIcons();
+                    setTimeout(() => {
+                        btn.innerHTML = `<i data-lucide="save" class="w-4 h-4"></i> 💾 Guardar Solo Instrucciones`;
+                        if (window.lucide) lucide.createIcons();
+                    }, 2000);
+                }
             }
         }
 
         function guardarCloudUrl() {
             const url = document.getElementById('txt-cloud-url').value.trim();
             localStorage.setItem('cloud_backend_url', url);
-            alert("💾 URL del Servidor guardada. Recargando...");
-            window.location.reload();
+            mostrarToast("💾 URL guardada. Recargando...", "bg-cyan-600");
+            setTimeout(() => window.location.reload(), 1000);
         }
 
         async function generarNuevoQR() {
+            mostrarToast("🔄 Generando nuevo código QR...", "bg-cyan-600");
             try {
-                const res = await fetch(`${backendUrl}/api/generar-qr-nuevo`, { method: 'POST' });
-                const data = await res.json();
-                if (data.success) alert("🔄 " + data.message);
-            } catch (e) { alert("🔄 Petición de nuevo QR enviada."); }
+                await fetch(`${backendUrl}/api/generar-qr-nuevo`, { method: 'POST' });
+            } catch (e) {}
         }
 
         async function desvincularWhatsApp() {
-            if (!confirm("⚠️ ¿Estás seguro de que deseas desvincular WhatsApp en CLON?")) return;
+            mostrarToast("⚡ Desvinculando sesión de WhatsApp...", "bg-rose-600");
             try {
-                const res = await fetch(`${backendUrl}/api/desvincular`, { method: 'POST' });
-                const data = await res.json();
-                if (data.success) alert("⚡ " + data.message);
-            } catch (e) { alert("⚡ Petición de desvinculación enviada."); }
+                await fetch(`${backendUrl}/api/desvincular`, { method: 'POST' });
+            } catch (e) {}
         }
 
         async function toggleEncendidoMaestro() {
@@ -617,27 +644,56 @@
                 .replace(/'/g, "&#039;");
         }
 
-        // SEGURIDAD CON PIN
-        const PIN_CORRECTO = "1234";
-        function mostrarModalPin() {
-            document.getElementById('pin-modal').classList.remove('hidden');
-            document.getElementById('stealth-blank-view').classList.add('hidden');
-        }
-        function cancelarIngresoPin() {
-            document.getElementById('pin-modal').classList.add('hidden');
-            document.getElementById('stealth-blank-view').classList.remove('hidden');
-        }
+        // SEGURIDAD CON PIN 6551
+        const PIN_CORRECTO = "6551";
+
         function verificarPin() {
-            const pin = document.getElementById('txt-secret-pin').value;
+            const input = document.getElementById('txt-secret-pin');
+            const pin = (input ? input.value : '').trim();
+            const stealth = document.getElementById('stealth-screen');
+            const errorLbl = document.getElementById('lbl-pin-error');
+
             if (pin === PIN_CORRECTO) {
-                document.getElementById('stealth-screen').classList.add('opacity-0');
-                setTimeout(() => document.getElementById('stealth-screen').classList.add('hidden'), 500);
+                if (errorLbl) errorLbl.classList.add('hidden');
+                sessionStorage.setItem('agente_unlocked', 'true');
+                if (stealth) {
+                    stealth.classList.add('opacity-0');
+                    setTimeout(() => {
+                        stealth.style.display = 'none';
+                    }, 400);
+                }
             } else {
-                document.getElementById('lbl-pin-error').classList.remove('hidden');
+                if (errorLbl) errorLbl.classList.remove('hidden');
+                if (input) {
+                    input.value = '';
+                    input.focus();
+                }
+            }
+        }
+
+        function bloquearPanelManual() {
+            sessionStorage.removeItem('agente_unlocked');
+            const input = document.getElementById('txt-secret-pin');
+            if (input) input.value = '';
+            const errorLbl = document.getElementById('lbl-pin-error');
+            if (errorLbl) errorLbl.classList.add('hidden');
+            const stealth = document.getElementById('stealth-screen');
+            if (stealth) {
+                stealth.style.display = 'flex';
+                stealth.classList.remove('hidden', 'opacity-0');
             }
         }
 
         document.addEventListener('DOMContentLoaded', () => {
+            // Si ya se desbloqueó en esta sesión de navegador, no volver a pedir PIN
+            if (sessionStorage.getItem('agente_unlocked') === 'true') {
+                const stealth = document.getElementById('stealth-screen');
+                if (stealth) stealth.style.display = 'none';
+            } else {
+                const input = document.getElementById('txt-secret-pin');
+                if (input) input.focus();
+            }
+
             cargarConfiguracionInicial();
             conectarSockets();
             const keyInput = document.getElementById('txt-gemini-key');
